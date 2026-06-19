@@ -261,8 +261,7 @@ const richiediCambioEmail = async (userId, nuovaEmail) => {
 
   // Invia l'email alla nuova casella
   try {
-    await emailService.sendVerificationEmail(emailFormattata, tokenVerifica); 
-  } catch (err) {
+await emailService.sendEmailChangeEmail(emailFormattata, tokenVerifica);  } catch (err) {
     logger.error(`Errore invio email cambio indirizzo a ${emailFormattata}: ${err.message}`);
   }
 
@@ -270,13 +269,17 @@ const richiediCambioEmail = async (userId, nuovaEmail) => {
 };
 
 const confermaCambioEmail = async (token) => {
-  // Cerca l'utente che possiede questo token
+  // Cerca l'utente che possiede questo token E che ha una richiesta di cambio in sospeso
   const utente = await Utente.findOne({
-    where: { email_verification_token: token }
+    where: { 
+      email_verification_token: token,
+      nuova_email_pendente: { [Op.ne]: null } // Deve avere una nuova email in sospeso!
+    }
   });
 
   if (!utente) {
-    throw new AppError('Token di verifica non valido o già utilizzato.', 400, 'INVALID_TOKEN');
+    // Se non lo trovi qui, magari il token è quello di registrazione, non di cambio
+    throw new AppError('Token di verifica non valido o non associato a un cambio email.', 400, 'INVALID_TOKEN');
   }
 
   // Controlla scadenza
@@ -289,8 +292,7 @@ const confermaCambioEmail = async (token) => {
     email: utente.nuova_email_pendente,
     nuova_email_pendente: null,
     email_verification_token: null,
-    email_verification_expire: null,
-    refresh_token: null // Forza il relogin per sicurezza (opzionale)
+    email_verification_expire: null
   });
 
   logger.info(`Email aggiornata con successo per utente ID: ${utente.id}`);

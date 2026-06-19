@@ -70,8 +70,20 @@ from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
   await transporter.sendMail(mailOptions);
   logger.info(`Email di reset password inviata con successo a: ${email}`);
 };
+const sendEmailChangeEmail = async (email, token) => {
+  // Qui cambi la rotta in /verify-email-change
+  const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email-change?token=${token}`;
+  
+const mailOptions = {
+      from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Conferma il cambio del tuo indirizzo Email',
+      html: `<p>Clicca qui per confermare il cambio email: <a href="${url}">${url}</a></p>`
+  };
 
+  await transporter.sendMail(mailOptions);
+};
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
-};
+sendEmailChangeEmail};

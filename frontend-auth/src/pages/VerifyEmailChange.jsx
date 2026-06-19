@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axiosSetup';
 
@@ -7,15 +7,24 @@ const VerifyEmailChange = () => {
   const [status, setStatus] = useState('Verifica in corso...');
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  
+  // useRef ci permette di capire se abbiamo già inviato la richiesta
+  const initialized = useRef(false);
 
   useEffect(() => {
+    // Se la richiesta è già partita in questo ciclo di vita, interrompiamo la seconda
+    if (initialized.current) return;
+    initialized.current = true;
+
     const verifyToken = async () => {
       try {
         await axios.get(`/auth/confirm-email-change?token=${token}`);
         setStatus('Email aggiornata con successo! Verrai reindirizzato alla dashboard...');
-        localStorage.removeItem('accessToken'); // Opzionale: pulisci la sessione per richiedere le nuove credenziali
-localStorage.removeItem('refreshToken');
-setTimeout(() => navigate('/login'), 3000);
+        
+        localStorage.removeItem('accessToken'); 
+        localStorage.removeItem('refreshToken');
+        
+        setTimeout(() => navigate('/login'), 3000);
       } catch (error) {
         setStatus(error.response?.data?.message || 'Errore durante la verifica del token.');
       }

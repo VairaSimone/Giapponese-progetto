@@ -159,6 +159,12 @@ Utente.init(
       defaultValue: null,
       field: 'email_verification_expire'
     },
+    nuova_email_pendente: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      field: 'nuova_email_pendente'
+    },
   },
   {
     sequelize,
