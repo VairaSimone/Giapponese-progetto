@@ -4,7 +4,8 @@ const { verifyAccessToken } = require('../utils/jwtHelpers');
 const AppError = require('../utils/AppError');
 const catchAsync = require('../utils/catchAsync');
 const Utente = require('../models/Utente');
-
+const jwt = require('jsonwebtoken');
+const jwtConfig = require('../config/jwt');
 /**
  * Middleware di autenticazione JWT.
  *
@@ -15,40 +16,28 @@ const Utente = require('../models/Utente');
  * 4. Inietta l'utente in req.user per i controller successivi
  */
 const authenticateJWT = catchAsync(async (req, res, next) => {
-  // 1. Estrai il token dall'header
-  let token;
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7); // Rimuovi "Bearer "
-  }
+  // 1. Leggi il token dai cookie anziché dagli header
+  const token = req.cookies.access_token;
 
   if (!token) {
-    return next(new AppError('Accesso negato. Autenticazione richiesta.', 401, 'NO_TOKEN'));
+    return next(new AppError('Non sei autenticato. Effettua il login per accedere.', 401));
   }
 
-  // 2. Verifica il token (firma + scadenza)
-  let decoded;
-  try {
-    decoded = verifyAccessToken(token);
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return next(new AppError('Token scaduto. Effettua il refresh.', 401, 'TOKEN_EXPIRED'));
-    }
-    return next(new AppError('Token non valido.', 401, 'INVALID_TOKEN'));
-  }
+  // 2. Verifica la firma del JWT
+  const decoded = jwt.verify(token, jwtConfig.accessSecret);
 
-  // 3. Verifica che l'utente esista ancora nel DB
-  // (es: account eliminato dopo l'emissione del token)
-  const utente = await Utente.findByPk(decoded.id, {
-    attributes: { exclude: ['password', 'refresh_token', 'reset_password_token', 'reset_password_expire'] },
-  });
-
+  // 3. Controlla se l'utente esiste ancora e ottieni il token_version
+  const utente = await Utente.findByPk(decoded.id);
   if (!utente) {
-    return next(new AppError('Utente non trovato. Token non più valido.', 401, 'USER_NOT_FOUND'));
+    return next(new AppError("L'utente a cui appartiene questo token non esiste più.", 401));
   }
 
-  // 4. Inietta l'utente nella request per i controller successivi
+  // 4. VERIFICA LA VERSIONE DEL TOKEN (Invalidazione al logout)
+  if (decoded.token_version !== utente.token_version) {
+    return next(new AppError("Token non più valido (sessione terminata o password cambiata).", 401));
+  }
+
+  // Se tutto ok, inietta l'utente
   req.user = utente;
   next();
 });

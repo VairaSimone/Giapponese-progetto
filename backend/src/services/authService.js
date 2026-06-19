@@ -95,12 +95,14 @@ const fakeHashCompare = async () => {
 // ─────────────────────────────────────────────
 
 const logoutUtente = async (userId) => {
-  await Utente.update(
-    { refresh_token: null },
-    { where: { id: userId } }
-  );
+const utente = await Utente.findByPk(userId);
 
-  logger.info(`Logout effettuato per utente ID: ${userId}`);
+if (utente) {
+    // Incrementando la versione, rendiamo invalidi TUTTI i JWT emessi prima di questo momento
+    utente.token_version += 1; 
+    
+    await utente.save();
+  }
 };
 
 // ─────────────────────────────────────────────

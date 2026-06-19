@@ -9,7 +9,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const AppError = require('./utils/AppError');
 const authRoutes = require('./routes/authRoutes');
-
+const cookieParser = require('cookie-parser');
 const app = express();
 
 // ─────────────────────────────────────────────
@@ -57,6 +57,7 @@ app.use(globalLimiter);
 app.use(express.json({ limit: '10kb' }));        // Limita payload JSON a 10KB
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(i18nMiddleware.handle(i18next));
+app.use(cookieParser());
 // ─────────────────────────────────────────────
 // LOGGING HTTP
 // ─────────────────────────────────────────────

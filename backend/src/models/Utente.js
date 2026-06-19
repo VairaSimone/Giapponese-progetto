@@ -166,6 +166,11 @@ Utente.init(
       defaultValue: null,
       field: 'nuova_email_pendente'
     },
+    token_version: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false
+  },
     lingua: {
       type: DataTypes.ENUM(...LINGUE_VALIDE),
       allowNull: false,

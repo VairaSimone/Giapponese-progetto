@@ -13,6 +13,7 @@ const generateAccessToken = (user) => {
     {
       id: user.id,
       ruolo: user.ruolo,
+      token_version: user.token_version
     },
     jwtConfig.access.secret,
     {

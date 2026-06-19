@@ -32,28 +32,51 @@ exports.register = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────
 // POST /api/auth/login
 // ─────────────────────────────────────────────
-exports.login = catchAsync(async (req, res) => {
+exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
+  
+  // Il service ti restituisce i token generati
+  const { accessToken, refreshToken } = await authService.login(email, password);
 
-  const risultato = await authService.loginUtente(email, password);
+  // Configurazione base per i cookie di sicurezza
+  const cookieOptions = {
+    httpOnly: true, // Non accessibile da JavaScript nel browser (Protezione XSS)
+    secure: process.env.NODE_ENV === 'production', // True se sei in HTTPS
+    sameSite: 'strict', // Protezione CSRF
+  };
+
+  // Setta i cookie nella response (imposta i maxAge coerenti con il config dei token)
+  res.cookie('access_token', accessToken, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000 // 15 minuti in millisecondi
+  });
+
+  res.cookie('refresh_token', refreshToken, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 giorni
+  });
 
   res.status(200).json({
     status: 'success',
-    message: 'Login effettuato con successo.',
-    data: risultato,
+    message: 'Login effettuato con successo'
+    // NON inviare i token nel body
   });
 });
 
 // ─────────────────────────────────────────────
 // POST /api/auth/logout
 // ─────────────────────────────────────────────
-exports.logout = catchAsync(async (req, res) => {
-  // req.user è stato iniettato da authenticateJWT
-  await authService.logoutUtente(req.user.id);
+exports.logout = catchAsync(async (req, res, next) => {
+  // 1. Invoca il service per incrementare il token_version
+  await authService.logout(req.user.id);
+
+  // 2. Cancella i cookie lato client
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token');
 
   res.status(200).json({
     status: 'success',
-    message: 'Logout effettuato con successo.',
+    message: 'Logout completato con successo'
   });
 });
 
