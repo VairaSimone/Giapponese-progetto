@@ -36,13 +36,14 @@ exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   
   // Il service ti restituisce i token generati
-  const { accessToken, refreshToken } = await authService.login(email, password);
+  const { accessToken, refreshToken } = await authService.loginUtente(email, password);
 
   // Configurazione base per i cookie di sicurezza
   const cookieOptions = {
     httpOnly: true, // Non accessibile da JavaScript nel browser (Protezione XSS)
     secure: process.env.NODE_ENV === 'production', // True se sei in HTTPS
-    sameSite: 'strict', // Protezione CSRF
+    sameSite: 'none', 
+    secure: true
   };
 
   // Setta i cookie nella response (imposta i maxAge coerenti con il config dei token)
@@ -98,16 +99,34 @@ exports.me = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────
 // POST /api/auth/refresh-token
 // ─────────────────────────────────────────────
-exports.refreshToken = catchAsync(async (req, res) => {
-  const { refreshToken } = req.body;
+exports.refreshToken = catchAsync(async (req, res, next) => {
+    // PRIMA: const { refreshToken } = req.body;
+    
+    // DOPO (CORRETTO):
+    const refreshToken = req.cookies.refresh_token;
 
-  const risultato = await authService.refreshAccessToken(refreshToken);
+    if (!refreshToken) {
+        return next(new AppError(req.t('auth.refresh_token_required'), 401));
+    }
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Access token rinnovato.',
-    data: risultato,
-  });
+    // Prosegui con la tua logica esistente di verifica del servizio...
+    const tokens = await authService.refreshSession(refreshToken);
+
+    // Se rigeneri anche il refresh token (consigliato per il token rotation), 
+    // ricordati di reimpostarlo nel cookie:
+    res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 giorni
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            accessToken: tokens.accessToken
+        }
+    });
 });
 
 // ─────────────────────────────────────────────

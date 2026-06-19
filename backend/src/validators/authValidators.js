@@ -1,7 +1,8 @@
 'use strict';
-
+const { cookie } = require('express-validator');
 const { body } = require('express-validator');
 const Utente = require('../models/Utente');
+const validate = require('../middleware/validate');
 
 // ─────────────────────────────────────────────
 // Regole di validazione riutilizzabili
@@ -100,9 +101,10 @@ const validateChangeEmail = [
 // POST /api/auth/refresh-token
 // ─────────────────────────────────────────────
 const validateRefreshToken = [
-  body('refreshToken')
-    .trim()
-    .notEmpty().withMessage('Il refresh token è obbligatorio'),
+    cookie('refresh_token')
+        .notEmpty()
+        .withMessage('auth.refresh_token_required'), // o la tua stringa di traduzione
+    validate // il tuo middleware che controlla i risultati di express-validator
 ];
 
 // ─────────────────────────────────────────────

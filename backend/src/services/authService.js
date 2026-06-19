@@ -66,7 +66,7 @@ const loginUtente = async (email, password) => {
 
   // 3. Verifica la password
   // Usa il metodo del modello, o bcrypt.compare(password, utente.password) se lo fai inline
-  const isPasswordValid = await utente.confrontaPassword(password);
+  const isPasswordValid = await utente.verificaPassword(password);
 
   // 4. Gestione password errata (incremento fallimenti)
   if (!isPasswordValid) {
@@ -87,9 +87,9 @@ const loginUtente = async (email, password) => {
   }
 
   // 5. Controllo se l'email è verificata (se usi questo sistema nel tuo progetto)
-  if (!utente.is_verificato) {
-    throw new AppError('Devi prima verificare il tuo indirizzo email.', 403);
-  }
+if (!utente.email_verificata) {
+    throw new AppError(req.t('auth.email_not_verified'), 401);
+}
 
   // 6. Login effettuato con successo: RESETTIAMO i contatori
   if (utente.tentativi_falliti > 0 || utente.bloccato_fino_al !== null) {

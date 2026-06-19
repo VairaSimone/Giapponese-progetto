@@ -8,7 +8,7 @@ const rateLimit = require('express-rate-limit');
  */
 const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 1000,
   standardHeaders: true,  // Invia header X-RateLimit-* standard
   legacyHeaders: false,   // Disabilita header X-RateLimit-* vecchi
   message: {
