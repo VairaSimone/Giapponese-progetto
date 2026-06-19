@@ -91,7 +91,6 @@ router.post('/verify-email', validateVerifyEmail, validate, authController.verif
 // Route protette (richiedono access token valido)
 router.post('/logout', authenticateJWT, authController.logout);
 router.get('/me', authenticateJWT, authController.me);
-router.patch('/change-email', authenticateJWT, validateChangeEmail, validate, authController.changeEmail);
-router.post('/request-email-change', authenticateJWT, validate, authController.requestEmailChange);
+router.post('/request-email-change', authenticateJWT, validateChangeEmail, validate, authController.requestEmailChange);
 router.get('/confirm-email-change', authController.confirmEmailChange);
 module.exports = router;

@@ -118,23 +118,6 @@ exports.resetPassword = catchAsync(async (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────
-// PATCH /api/auth/change-email
-// ─────────────────────────────────────────────
-exports.changeEmail = catchAsync(async (req, res) => {
-  const { nuovaEmail } = req.body;
-  const userId = req.user.id;
-
-  const utenteAggiornato = await authService.changeEmail(userId, nuovaEmail);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Email aggiornata con successo.',
-    data: {
-      utente: utenteAggiornato,
-    },
-  });
-});
 
 // ─────────────────────────────────────────────
 // POST /api/auth/verify-email
