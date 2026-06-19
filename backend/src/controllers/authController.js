@@ -146,3 +146,26 @@ exports.verifyEmail = catchAsync(async (req, res) => {
     message: 'Email verificata con successo! Ora puoi effettuare il login.',
   });
 });
+
+// ─────────────────────────────────────────────
+// POST /api/auth/request-email-change
+// ─────────────────────────────────────────────
+exports.requestEmailChange = catchAsync(async (req, res) => {
+
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Richiesta di cambio email presa in carico. Controlla la tua casella postale.',
+  });
+});
+
+// ─────────────────────────────────────────────
+// GET /api/auth/confirm-email-change
+// ─────────────────────────────────────────────
+exports.confirmEmailChange = catchAsync(async (req, res) => {
+  
+  res.status(200).json({
+    status: 'success',
+    message: 'Email modificata e confermata con successo.',
+  });
+});
