@@ -132,3 +132,17 @@ exports.changeEmail = catchAsync(async (req, res) => {
     },
   });
 });
+
+// ─────────────────────────────────────────────
+// POST /api/auth/verify-email
+// ─────────────────────────────────────────────
+exports.verifyEmail = catchAsync(async (req, res) => {
+  const { token } = req.body;
+
+  await authService.verificaEmail(token);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Email verificata con successo! Ora puoi effettuare il login.',
+  });
+});

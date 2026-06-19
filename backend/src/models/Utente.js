@@ -143,6 +143,18 @@ Utente.init(
       allowNull: true,
       defaultValue: null,
     },
+
+    email_verification_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+    },
+
+    email_verification_expire: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,
@@ -157,6 +169,7 @@ Utente.init(
     indexes: [
       { unique: true, fields: ['email'] },
       { fields: ['reset_password_token'] },
+      { fields: ['email_verification_token'] },
       { fields: ['ruolo'] },
     ],
 

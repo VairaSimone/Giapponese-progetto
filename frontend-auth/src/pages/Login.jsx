@@ -15,9 +15,13 @@ export default function Login() {
     setError('');
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || "Errore di connessione");
+if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+      setError('Il tuo indirizzo email non è ancora stato verificato. Controlla la tua casella di posta per attivare l\'account prima di accedere.');
+    } else {
+      setError(err.response?.data?.message || 'Credenziali non valide.');
+    }
     }
   };
 

@@ -23,8 +23,7 @@ export default function Register() {
       // Cast età a numero
       const dataToSend = { ...formData, eta: Number(formData.eta) };
       await register(dataToSend);
-      setSuccess('Registrazione completata! Verrai reindirizzato al login...');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('Registrazione completata con successo! Ti abbiamo inviato un\'email di conferma. Controlla la tua casella di posta (e la cartella Spam) per attivare l\'account.');
     } catch (err) {
       setError(err.response?.data?.message || "Errore durante la registrazione");
     }

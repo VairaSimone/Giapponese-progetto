@@ -19,6 +19,7 @@ const {
   validateResetPassword,
   validateChangeEmail,
   validateRefreshToken,
+  validateVerifyEmail,
 } = require('../validators/authValidators');
 
 /**
@@ -86,6 +87,7 @@ router.post('/login', loginLimiter, validateLogin, validate, authController.logi
 router.post('/refresh-token', validateRefreshToken, validate, authController.refreshToken);
 router.post('/forgot-password', forgotPasswordLimiter, validateForgotPassword, validate, authController.forgotPassword);
 router.post('/reset-password', validateResetPassword, validate, authController.resetPassword);
+router.post('/verify-email', validateVerifyEmail, validate, authController.verifyEmail);
 
 // Route protette (richiedono access token valido)
 router.post('/logout', authenticateJWT, authController.logout);

@@ -105,6 +105,17 @@ const validateRefreshToken = [
     .notEmpty().withMessage('Il refresh token è obbligatorio'),
 ];
 
+// ─────────────────────────────────────────────
+// POST /api/auth/verify-email
+// ─────────────────────────────────────────────
+const validateVerifyEmail = [
+  body('token')
+    .trim()
+    .notEmpty().withMessage('Il token di verifica è obbligatorio')
+    .isHexadecimal().withMessage('Formato token non valido')
+    .isLength({ min: 64, max: 64 }).withMessage('Token non valido'),
+];
+
 module.exports = {
   validateRegistrazione,
   validateLogin,
@@ -112,4 +123,5 @@ module.exports = {
   validateResetPassword,
   validateChangeEmail,
   validateRefreshToken,
+  validateVerifyEmail,
 };

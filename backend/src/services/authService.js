@@ -6,51 +6,58 @@ const Utente = require('../models/Utente');
 const AppError = require('../utils/AppError');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwtHelpers');
 const logger = require('../utils/logger');
-
+const emailService = require('./emailService');
 // ─────────────────────────────────────────────
 // REGISTRAZIONE
 // ─────────────────────────────────────────────
 
 const registraUtente = async ({ nome, cognome, eta, email, password, classe }) => {
-  // Controlla se l'email è già usata (doppio controllo: DB ha unique constraint,
-  // ma così diamo un messaggio personalizzato prima di tentare l'INSERT)
   const esistente = await Utente.findOne({ where: { email: email.toLowerCase() } });
   if (esistente) {
     throw new AppError('Email già registrata. Usa un\'altra email.', 409, 'EMAIL_TAKEN');
   }
 
-  // Crea l'utente. Il ruolo è forzato a 'studente' qui nel service,
-  // NON si usa quello eventualmente passato dal client.
+  // Genera un token sicuro per la verifica email
+  const tokenVerifica = crypto.randomBytes(32).toString('hex');
+  const scadenzaVerifica = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ore di validità
+
   const nuovoUtente = await Utente.create({
     nome: nome.trim(),
     cognome: cognome.trim(),
     eta,
     email: email.toLowerCase().trim(),
-    password, // L'hook beforeSave del modello farà l'hash
-    ruolo: 'studente', // SEMPRE studente in fase di registrazione
+    password, 
+    ruolo: 'studente', 
     classe,
     email_verificata: false,
+    email_verification_token: tokenVerifica,
+    email_verification_expire: scadenzaVerifica,
   });
+
+  // Invia l'email in modo asincrono per non bloccare la risposta HTTP del server
+  try {
+    await emailService.sendVerificationEmail(nuovoUtente.email, tokenVerifica);
+  } catch (err) {
+    logger.error(`Errore nell'invio dell'email di verifica a ${nuovoUtente.email}: ${err.message}`);
+    // Non lanciamo l'errore per evitare che l'utente veda un fallimento di sistema, 
+    // l'utente potrà eventualmente richiedere un nuovo invio.
+  }
 
   logger.info(`Nuovo utente registrato: ${nuovoUtente.email} (ID: ${nuovoUtente.id})`);
   return nuovoUtente;
 };
+
 
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
 
 const loginUtente = async (email, password) => {
-  // Carica l'utente includendo la password (normalmente esclusa)
   const utente = await Utente.findOne({
     where: { email: email.toLowerCase().trim() },
-    // Devi includere esplicitamente la password per la verifica
     attributes: { include: ['password'] },
   });
 
-  // Verifica utente e password in un'unica operazione.
-  // IMPORTANTE: verifica sempre la password anche se l'utente non esiste
-  // (timing attack prevention: così il tempo di risposta è simile nei due casi)
   const passwordValida = utente
     ? await utente.verificaPassword(password)
     : await fakeHashCompare();
@@ -59,13 +66,15 @@ const loginUtente = async (email, password) => {
     throw new AppError('Credenziali non valide.', 401, 'INVALID_CREDENTIALS');
   }
 
-  // Genera i token
+  // CONTROLLO DI SICUREZZA DI INPUT: L'email deve essere verificata
+  if (!utente.email_verificata) {
+    throw new AppError('Devi verificare il tuo indirizzo email prima di effettuare il login.', 403, 'EMAIL_NOT_VERIFIED');
+  }
+
   const accessToken = generateAccessToken(utente);
   const refreshToken = generateRefreshToken(utente);
 
-  // Salva il refresh token nel DB (per poterlo invalidare al logout)
   await utente.update({ refresh_token: refreshToken });
-
   logger.info(`Login effettuato: ${utente.email} (ID: ${utente.id})`);
 
   return {
@@ -146,34 +155,30 @@ const refreshAccessToken = async (refreshToken) => {
 const forgotPassword = async (email) => {
   const utente = await Utente.findOne({ where: { email: email.toLowerCase() } });
 
-  // SICUREZZA: rispondi sempre con successo, anche se l'email non esiste.
-  // Questo previene l'enumerazione degli account registrati.
   if (!utente) {
     logger.info(`Reset password richiesto per email inesistente: ${email}`);
     return { emailInviata: false };
   }
 
-  // Genera un token casuale crittograficamente sicuro (32 byte = 64 hex chars)
   const token = crypto.randomBytes(32).toString('hex');
-
-  // Calcola la scadenza (default: 1 ora da adesso)
   const oreScadenza = parseInt(process.env.RESET_PASSWORD_EXPIRES_HOURS) || 1;
   const scadenza = new Date(Date.now() + oreScadenza * 60 * 60 * 1000);
 
-  // Salva token e scadenza nel DB
   await utente.update({
     reset_password_token: token,
     reset_password_expire: scadenza,
   });
 
-  logger.info(`Token reset password generato per: ${utente.email} (scade: ${scadenza.toISOString()})`);
+  // INVIO REALE DELL'EMAIL DI RESET
+  try {
+    await emailService.sendPasswordResetEmail(utente.email, token);
+  } catch (err) {
+    logger.error(`Errore nell'invio dell'email di reset a ${utente.email}: ${err.message}`);
+    throw new AppError('Impossibile inviare l\'email di ripristino. Riprova più tardi.', 500, 'EMAIL_SEND_FAILED');
+  }
 
-  // In un'applicazione reale, qui invieresti l'email con il link di reset.
-  // Esempio: await emailService.sendPasswordResetEmail(utente.email, token);
-  // Per ora restituiamo il token (solo in sviluppo, NON in produzione!)
   return {
     emailInviata: true,
-    // Rimuovi questo in produzione! Il token va solo nell'email.
     tokenDebug: process.env.NODE_ENV !== 'production' ? token : undefined,
   };
 };
@@ -242,6 +247,29 @@ const changeEmail = async (userId, nuovaEmail) => {
   return utente.toPublicJSON();
 };
 
+const verificaEmail = async (token) => {
+  const utente = await Utente.findOne({
+    where: {
+      email_verification_token: token,
+      email_verification_expire: {
+        [Op.gt]: new Date(), // Il token deve scadere dopo il momento attuale
+      },
+    },
+  });
+
+  if (!utente) {
+    throw new AppError('Token di verifica non valido o scaduto.', 400, 'INVALID_VERIFICATION_TOKEN');
+  }
+
+  await utente.update({
+    email_verificata: true,
+    email_verification_token: null,
+    email_verification_expire: null,
+  });
+
+  logger.info(`Email verificata con successo per l'utente ID: ${utente.id}`);
+};
+
 module.exports = {
   registraUtente,
   loginUtente,
@@ -250,4 +278,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   changeEmail,
+  verificaEmail,
 };
