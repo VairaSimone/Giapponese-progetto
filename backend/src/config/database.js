@@ -11,7 +11,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 3306,
     dialect: 'mysql',
-
+timezone: '+02:00',
     // Pool di connessioni: evita di aprire/chiudere una connessione per ogni query
     pool: {
       max: 10,         // connessioni simultanee massime

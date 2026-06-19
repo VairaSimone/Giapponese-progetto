@@ -202,7 +202,10 @@ const resetPassword = async (token, nuovaPassword) => {
   if (!utente) {
     throw new AppError('Token non valido o scaduto.', 400, 'INVALID_RESET_TOKEN');
   }
-
+const adesso = new Date();
+  if (utente.email_verification_expire && utente.email_verification_expire < adesso) {
+    throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
+  }
   // Aggiorna la password e pulisci i campi del token
   await utente.update({
     password: nuovaPassword, // L'hook beforeSave farà l'hash
@@ -260,7 +263,10 @@ const verificaEmail = async (token) => {
   if (!utente) {
     throw new AppError('Token di verifica non valido o scaduto.', 400, 'INVALID_VERIFICATION_TOKEN');
   }
-
+const adesso = new Date();
+  if (utente.email_verification_expire && utente.email_verification_expire < adesso) {
+    throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
+  }
   await utente.update({
     email_verificata: true,
     email_verification_token: null,
