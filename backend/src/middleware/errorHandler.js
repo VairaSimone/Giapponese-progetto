@@ -10,7 +10,12 @@ const AppError = require('../utils/AppError');
 /** Sequelize: violazione di unique constraint (es. email duplicata) */
 const handleSequelizeUniqueError = (err) => {
   const field = err.errors?.[0]?.path || 'campo';
-  return new AppError(`Valore duplicato per: ${field}`, 409, 'DUPLICATE_VALUE');
+  // Personalizziamo il messaggio per renderlo più leggibile all'utente finale
+  const messaggio = field === 'email' 
+    ? 'Questo indirizzo email è già registrato. Scegline un altro.' 
+    : `Valore duplicato per il campo: ${field}`;
+    
+  return new AppError(messaggio, 409, 'DUPLICATE_VALUE');
 };
 
 /** Sequelize: errore di validazione del modello */
@@ -19,13 +24,13 @@ const handleSequelizeValidationError = (err) => {
   return new AppError(`Dati non validi: ${messages}`, 400, 'VALIDATION_ERROR');
 };
 
-/** JWT: token malformato */
+/** JWT: token malformato o manomesso */
 const handleJWTError = () =>
-  new AppError('Token non valido.', 401, 'INVALID_TOKEN');
+  new AppError('Token non valido. Autenticazione fallita.', 401, 'INVALID_TOKEN');
 
 /** JWT: token scaduto */
 const handleJWTExpiredError = () =>
-  new AppError('Token scaduto. Effettua il refresh.', 401, 'TOKEN_EXPIRED');
+  new AppError('Il tuo token è scaduto. Effettua nuovamente il login o il refresh.', 401, 'TOKEN_EXPIRED');
 
 // ─────────────────────────────────────────────
 // Formattatori di risposta
@@ -63,39 +68,42 @@ const sendErrorProd = (err, res) => {
 };
 
 // ─────────────────────────────────────────────
-// Middleware principale (deve avere 4 parametri!)
+// Middleware principale
 // ─────────────────────────────────────────────
 
 const errorHandler = (err, req, res, next) => {
-  // Imposta valori di default se mancanti
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || 'error';
+  // Spostiamo la conversione in cima, così vale sia per DEV che per PROD
+  let error = Object.assign(Object.create(Object.getPrototypeOf(err)), err);
+  error.message = err.message;
+  error.stack = err.stack;
 
-  // Log dell'errore (sempre, indipendentemente dall'ambiente)
-  if (err.statusCode >= 500) {
-    logger.error(`${err.statusCode} ${err.message}`, {
+  if (error.name === 'SequelizeUniqueConstraintError') error = handleSequelizeUniqueError(error);
+  if (error.name === 'SequelizeValidationError') error = handleSequelizeValidationError(error);
+  if (error.name === 'JsonWebTokenError') error = handleJWTError();
+  if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
+
+  // Imposta valori di default se mancanti dopo la conversione
+  error.statusCode = error.statusCode || 500;
+  error.status = error.status || 'error';
+
+  // Log dell'errore
+  if (error.statusCode >= 500) {
+    logger.error(`${error.statusCode} ${error.message}`, {
       path: req.path,
       method: req.method,
-      stack: err.stack,
+      stack: error.stack,
     });
   } else {
-    logger.warn(`${err.statusCode} ${err.message}`, {
+    logger.warn(`${error.statusCode} ${error.message}`, {
       path: req.path,
       method: req.method,
     });
   }
 
+  // Invio della risposta in base all'ambiente
   if (process.env.NODE_ENV === 'development') {
-    sendErrorDev(err, res);
+    sendErrorDev(error, res);
   } else {
-    // In produzione, trasforma certi errori di librerie in AppError
-    let error = Object.assign(Object.create(Object.getPrototypeOf(err)), err);
-
-    if (error.name === 'SequelizeUniqueConstraintError') error = handleSequelizeUniqueError(error);
-    if (error.name === 'SequelizeValidationError') error = handleSequelizeValidationError(error);
-    if (error.name === 'JsonWebTokenError') error = handleJWTError();
-    if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
-
     sendErrorProd(error, res);
   }
 };

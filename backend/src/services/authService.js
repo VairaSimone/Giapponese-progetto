@@ -15,11 +15,6 @@ const MAX_TENTATIVI_FALLITI = 5;
 const TEMPO_BLOCCO_MINUTI = 15;
 // Aggiunta la proprietà 'lingua' ai parametri ricevuti (con fallback a 'it')
 const registraUtente = async ({ nome, cognome, eta, email, password, classe, lingua = 'it' }) => {
-  const esistente = await Utente.findOne({ where: { email: email.toLowerCase() } });
-  if (esistente) {
-    throw new AppError('Email già registrata. Usa un\'altra email.', 409, 'EMAIL_TAKEN');
-  }
-
   // Genera un token sicuro per la verifica email
   const tokenVerifica = crypto.randomBytes(32).toString('hex');
   const scadenzaVerifica = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ore di validità
