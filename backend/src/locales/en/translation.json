@@ -1,0 +1,26 @@
+{
+  "email": {
+    "verify": {
+      "subject": "Verify your Email address",
+      "title": "Welcome to our Japanese Platform!",
+      "body": "Thank you for registering. To complete your account activation, click the button below:",
+      "button": "Verify Email",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:",
+      "footer": "This link will expire in 24 hours. If you did not request this registration, please ignore this email."
+    }, 
+    "reset": {
+      "subject": "Password Reset Request",
+      "title": "Password Reset",
+      "body": "You requested to reset your account password. Click the link below to proceed:",
+      "button": "Reset Password",
+      "footer": "If you did not request a reset, please ignore this email and your password will remain unchanged. This link will expire in 1 hour."
+    },
+    "change": {
+      "subject": "Confirm your Email address change",
+      "body": "Click the link below to confirm your new email address:"
+    }
+  },
+  "messages": {
+    "langChanged": "Language successfully updated."
+  }
+}

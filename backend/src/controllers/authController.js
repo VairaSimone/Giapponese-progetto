@@ -226,3 +226,27 @@ exports.deleteUserByTeacher = catchAsync(async (req, res) => {
     message: 'L\'account dell\'utente è stato eliminato definitivamente dall\'insegnante.',
   });
 });
+
+
+// ─────────────────────────────────────────────
+// PATCH /api/auth/me/lingua
+// ─────────────────────────────────────────────
+exports.updateLanguage = catchAsync(async (req, res) => {
+  const { lingua } = req.body;
+
+  if (!['it', 'en'].includes(lingua)) {
+    return res.status(400).json({ status: 'fail', message: 'Lingua non supportata.' });
+  }
+
+  // Puoi creare una funzione in authService, o usare direttamente il modello
+  const utente = await Utente.findByPk(req.user.id);
+  utente.lingua = lingua;
+  await utente.save();
+
+  res.status(200).json({
+    status: 'success',
+    // Utilizziamo req.t per rispondere nella lingua appena selezionata o rilevata
+    message: req.t('messages.langChanged'), 
+    data: { utente: utente.toPublicJSON() }
+  });
+});

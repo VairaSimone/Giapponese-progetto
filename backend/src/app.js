@@ -3,7 +3,7 @@
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-
+const { middleware: i18nMiddleware, i18next } = require('./config/i18n');
 const requestLogger = require('./middleware/requestLogger');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -56,7 +56,7 @@ app.use(globalLimiter);
 // ─────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));        // Limita payload JSON a 10KB
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
+app.use(i18nMiddleware.handle(i18next));
 // ─────────────────────────────────────────────
 // LOGGING HTTP
 // ─────────────────────────────────────────────

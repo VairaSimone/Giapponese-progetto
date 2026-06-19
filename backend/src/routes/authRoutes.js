@@ -94,7 +94,7 @@ router.get('/me', authenticateJWT, authController.me);
 router.delete('/me', authenticateJWT, authController.deleteMe); 
 router.post('/request-email-change', authenticateJWT, validateChangeEmail, validate, authController.requestEmailChange);
 router.get('/confirm-email-change', authController.confirmEmailChange);
-
+router.patch('/me/lingua', authenticateJWT, authController.updateLanguage);
 router.get('/gestione/utenti', authenticateJWT, authorizeRoles('insegnante'), authController.getAllUsers);
 router.patch('/gestione/utenti/:id/ruolo', authenticateJWT, authorizeRoles('insegnante'), authController.updateUserRole);
 router.delete('/gestione/utenti/:id', authenticateJWT, authorizeRoles('insegnante'), authController.deleteUserByTeacher);

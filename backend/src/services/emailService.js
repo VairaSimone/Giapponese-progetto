@@ -2,6 +2,7 @@
 
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
+const { i18next } = require('../config/i18n');
 
 // Configurazione del trasportatore SMTP basato sulle variabili d'ambiente (.env)
 const transporter = nodemailer.createTransport({
@@ -17,73 +18,90 @@ const transporter = nodemailer.createTransport({
 /**
  * Invia l'email di verifica dopo la registrazione
  */
-const sendVerificationEmail = async (email, token) => {
+const sendVerificationEmail = async (email, token, lingua = 'it') => {
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+  
+  // Ottieni la funzione di traduzione fissata sulla lingua dell'utente
+  const t = i18next.getFixedT(lingua);
   
   const mailOptions = {
     from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
     to: email,
-    subject: 'Verifica il tuo indirizzo Email',
+    subject: t('email.verify.subject'),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;">
-        <h2 style="color: #333;">Benvenuto sulla nostra Piattaforma di Giapponese!</h2>
-        <p>Grazie per esserti registrato. Per completare l'attivazione del tuo account, clicca sul pulsante sottostante:</p>
+        <h2 style="color: #333;">${t('email.verify.title')}</h2>
+        <p>${t('email.verify.body')}</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${url}" style="background-color: #e60012; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px;">Verifica Email</a>
+          <a href="${url}" style="background-color: #e60012; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px;">${t('email.verify.button')}</a>
         </div>
-        <p>Se il pulsante non funziona, copia e incolla questo link nel tuo browser:</p>
+        <p>${t('email.verify.fallback')}</p>
         <p><a href="${url}">${url}</a></p>
         <hr style="border: none; border-top: 1px solid #eee;" />
-        <p style="font-size: 12px; color: #777;">Questo link scadrà tra 24 ore. Se non hai richiesto tu questa registrazione, puoi ignorare questa email.</p>
+        <p style="font-size: 12px; color: #777;">${t('email.verify.footer')}</p>
       </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
-  logger.info(`Email di verifica inviata con successo a: ${email}`);
+  logger.info(`Email di verifica inviata con successo a: ${email} in lingua: ${lingua}`);
 };
 
 /**
  * Invia l'email per il ripristino della password
  */
-const sendPasswordResetEmail = async (email, token) => {
+const sendPasswordResetEmail = async (email, token, lingua = 'it') => {
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
 
+  const t = i18next.getFixedT(lingua);
+
   const mailOptions = {
-from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
+    from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
     to: email,
-    subject: 'Richiesta di Ripristino Password',
+    subject: t('email.reset.subject'),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;">
-        <h2 style="color: #333;">Ripristino Password</h2>
-        <p>Hai richiesto di reimpostare la password del tuo account. Clicca sul link sottostante per procedere:</p>
+        <h2 style="color: #333;">${t('email.reset.title')}</h2>
+        <p>${t('email.reset.body')}</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${url}" style="background-color: #333; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px;">Reimposta Password</a>
+          <a href="${url}" style="background-color: #333; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px;">${t('email.reset.button')}</a>
         </div>
-        <p>Se non hai richiesto tu il ripristino, ignora questa email e la tua password rimarrà invariata.</p>
         <hr style="border: none; border-top: 1px solid #eee;" />
-        <p style="font-size: 12px; color: #777;">Questo link scadrà tra 1 ora.</p>
+        <p style="font-size: 12px; color: #777;">${t('email.reset.footer')}</p>
       </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
-  logger.info(`Email di reset password inviata con successo a: ${email}`);
+  logger.info(`Email di reset password inviata con successo a: ${email} in lingua: ${lingua}`);
 };
-const sendEmailChangeEmail = async (email, token) => {
-  // Qui cambi la rotta in /verify-email-change
+
+/**
+ * Invia l'email per la conferma del cambio email
+ */
+const sendEmailChangeEmail = async (email, token, lingua = 'it') => {
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email-change?token=${token}`;
   
-const mailOptions = {
-      from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
-      to: email,
-      subject: 'Conferma il cambio del tuo indirizzo Email',
-      html: `<p>Clicca qui per confermare il cambio email: <a href="${url}">${url}</a></p>`
+  const t = i18next.getFixedT(lingua);
+
+  const mailOptions = {
+    from: `"Piattaforma Giapponese" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: t('email.change.subject'),
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;">
+        <p>${t('email.change.body')}</p>
+        <p><a href="${url}">${url}</a></p>
+      </div>
+    `
   };
 
   await transporter.sendMail(mailOptions);
+  logger.info(`Email di cambio indirizzo confermata ed inviata a: ${email} in lingua: ${lingua}`);
 };
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
-sendEmailChangeEmail};
+  sendEmailChangeEmail
+};

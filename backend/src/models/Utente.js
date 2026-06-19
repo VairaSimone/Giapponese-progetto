@@ -7,7 +7,7 @@ const sequelize = require('../config/database');
 // Valori ammessi per la classe: immutabili e condivisi con i validator
 const CLASSI_VALIDE = ['Prima', 'Seconda', 'Terza', 'Quarta', 'Quinta'];
 const RUOLI_VALIDI = ['studente', 'insegnante'];
-
+const LINGUE_VALIDE = ['it', 'en'];
 class Utente extends Model {
   /**
    * Verifica se la password fornita corrisponde all'hash salvato.
@@ -30,6 +30,7 @@ class Utente extends Model {
       email: this.email,
       ruolo: this.ruolo,
       classe: this.classe,
+      lingua: this.lingua,
       email_verificata: this.email_verificata,
       created_at: this.created_at,
     };
@@ -164,6 +165,17 @@ Utente.init(
       allowNull: true,
       defaultValue: null,
       field: 'nuova_email_pendente'
+    },
+    lingua: {
+      type: DataTypes.ENUM(...LINGUE_VALIDE),
+      allowNull: false,
+      defaultValue: 'it',
+      validate: {
+        isIn: {
+          args: [LINGUE_VALIDE],
+          msg: `La lingua deve essere una di: ${LINGUE_VALIDE.join(', ')}`,
+        },
+      },
     },
   },
   {
