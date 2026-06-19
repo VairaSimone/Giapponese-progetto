@@ -270,6 +270,49 @@ const adesso = new Date();
   logger.info(`Email verificata con successo per l'utente ID: ${utente.id}`);
 };
 
+const requestEmailChange = async (userId, newEmail) => {
+    // Controlla se la nuova email è già in uso
+    const existingUser = await Utente.findByEmail(newEmail);
+    if (existingUser) {
+        throw new AppError('Questa email è già associata a un altro account.', 400);
+    }
+
+    // Genera un token sicuro
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // Valido per 2 ore
+
+    // Salva i dati temporanei nel record dell'utente
+    await Utente.updatePendingEmail(userId, {
+        pending_email: newEmail,
+        email_change_token: tokenHash,
+        email_change_expires: expires
+    });
+
+    // Invia l'email di verifica al NUOVO indirizzo
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email-change?token=${token}`;
+    await emailService.sendEmailChangeVerification(newEmail, verificationUrl);
+
+    return token;
+};
+
+// 2. Conferma il cambio email dopo il clic sul link
+const confirmEmailChange = async (token) => {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Cerca l'utente con il token valido e non scaduto
+    const user = await Utente.findByEmailChangeToken(tokenHash);
+    if (!user || new Date(user.email_change_expires) < new Date()) {
+        throw new AppError('Il token di verifica è invalido o scaduto.', 400);
+    }
+
+    // Aggiorna l'email effettiva e pulisci i campi pendenti
+    await Utente.updateEmail(user.id, user.pending_email);
+    await Utente.clearPendingEmail(user.id);
+
+    return user;
+};
+
 module.exports = {
   registraUtente,
   loginUtente,
@@ -279,4 +322,6 @@ module.exports = {
   resetPassword,
   changeEmail,
   verificaEmail,
+  confirmEmailChange,
+  requestEmailChange,
 };

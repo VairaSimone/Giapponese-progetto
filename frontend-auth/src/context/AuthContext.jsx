@@ -58,9 +58,9 @@ export const AuthProvider = ({ children }) => {
     await api.post('/auth/reset-password', { token, nuovaPassword });
   };
 
-  const changeEmail = async (nuovaEmail) => {
-    const response = await api.patch('/auth/change-email', { nuovaEmail });
-    setUser(response.data.data.utente); // Aggiorna l'utente in tempo reale nel frontend
+const changeEmail = async (nuovaEmail) => {
+    const response = await api.post('/auth/request-email-change', { nuovaEmail });
+    return response.data; 
   };
 
   if (loading) return <div>Caricamento in corso...</div>;

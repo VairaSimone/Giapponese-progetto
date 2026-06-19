@@ -13,12 +13,21 @@ export default function Dashboard() {
     e.preventDefault();
     setEmailError('');
     setEmailMessage('');
+
+    // Controllo di sicurezza locale: evita di richiedere il cambio se l'email è identica
+    if (nuovaEmail.trim().toLowerCase() === user.email.toLowerCase()) {
+      setEmailError("La nuova email inserita è uguale a quella attuale.");
+      return;
+    }
+
     try {
       await changeEmail(nuovaEmail);
-      setEmailMessage('Email aggiornata con successo!');
+      
+      // MODIFICA QUI: Il feedback ora avvisa l'utente del link di verifica
+      setEmailMessage('Richiesta inviata! Controlla la tua nuova casella email e clicca sul link di conferma per completare la modifica.');
       setNuovaEmail('');
     } catch (err) {
-      setEmailError(err.response?.data?.message || "Impossibile aggiornare l'email");
+      setEmailError(err.response?.data?.message || "Impossibile elaborare la richiesta di cambio email");
     }
   };
 
@@ -34,11 +43,21 @@ export default function Dashboard() {
         <p><strong>Classe:</strong> {user.classe}</p>
       </div>
 
-      {/* --- SEZIONE CAMBIO EMAIL (PATCH) --- */}
+      {/* --- SEZIONE CAMBIO EMAIL CON VERIFICA PENDENTE --- */}
       <div style={{ border: '1px solid #ccc', padding: '15px', marginTop: '20px', borderRadius: '5px' }}>
         <h3>Modifica Email</h3>
         {emailError && <p style={{ color: 'red' }}>{emailError}</p>}
-        {emailMessage && <p style={{ color: 'green' }}>{emailMessage}</p>}
+        {emailMessage && (
+          <p style={{ 
+            color: '#004085', 
+            backgroundColor: '#cce5ff', 
+            borderColor: '#b8daff', 
+            padding: '10px', 
+            borderRadius: '5px' 
+          }}>
+            {emailMessage}
+          </p>
+        )}
         
         <form onSubmit={handleEmailChange} style={{ display: 'flex', gap: '10px' }}>
           <input 
@@ -49,7 +68,7 @@ export default function Dashboard() {
             required
             style={{ flex: 1, padding: '8px' }}
           />
-          <button type="submit" style={{ padding: '8px 15px' }}>Salva Email</button>
+          <button type="submit" style={{ padding: '8px 15px' }}>Invia Link di Verifica</button>
         </form>
       </div>
 
