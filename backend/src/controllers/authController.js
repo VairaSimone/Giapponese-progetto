@@ -138,43 +138,26 @@ exports.verifyEmail = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────
 exports.requestEmailChange = catchAsync(async (req, res) => {
   const { nuovaEmail } = req.body;
-  const userId = req.user.id; // Preso dal JWT token
+  const userId = req.user.id; 
 
-  // 1. Controlla se la nuova email è già usata da qualcun altro
-  const giaEsistente = await Utente.findOne({ where: { email: nuovaEmail.toLowerCase().trim() } });
-  if (giaEsistente) {
-    return res.status(409).json({ status: 'fail', message: 'Questa email è già associata a un altro account.' });
-  }
-
-  // 2. Genera un token sicuro
-  const tokenVerifica = crypto.randomBytes(32).toString('hex');
-  const scadenzaVerifica = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 ore di validità
-
-  // 3. Salva temporaneamente il token e la nuova email nel database sull'utente corrente
-  // Assicurati che questi campi (o simili) esistano nel tuo DB, altrimenti usa campi dedicati alla nuova email.
-  await Utente.update({
-    email_verification_token: tokenVerifica,
-    email_verification_expire: scadenzaVerifica,
-    // Se non hai una colonna temporanea 'nuova_email_pendente', puoi passarla nel link dell'email stessa,
-    // oppure salvarla in un campo ad hoc nel DB. Supponiamo qui di passarla via token o averla salvata.
-  }, { where: { id: userId } });
-
-  // 4. Invia l'email alla NUOVA casella postale
-  // Nota: puoi creare una funzione apposita in emailService o riadattare quella esistente
-  await emailService.sendVerificationEmail(nuovaEmail, tokenVerifica); 
+  const tokenVerifica = await authService.richiediCambioEmail(userId, nuovaEmail);
 
   res.status(200).json({
     status: 'success',
     message: 'Richiesta di cambio email presa in carico. Controlla la tua NUOVA casella postale.',
-    // Solo per sviluppo, se vuoi testare senza aprire l'email:
     _debug_token: tokenVerifica
   });
 });
 
-// ─────────────────────────────────────────────
 // GET /api/auth/confirm-email-change
-// ─────────────────────────────────────────────
 exports.confirmEmailChange = catchAsync(async (req, res) => {
+  const { token } = req.query; // Estrae il token dai parametri dell'URL (?token=...)
+
+  if (!token) {
+    return res.status(400).json({ status: 'fail', message: 'Token mancante.' });
+  }
+
+  await authService.confermaCambioEmail(token);
   
   res.status(200).json({
     status: 'success',

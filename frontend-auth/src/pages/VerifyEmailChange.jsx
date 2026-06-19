@@ -13,7 +13,9 @@ const VerifyEmailChange = () => {
       try {
         await axios.get(`/auth/confirm-email-change?token=${token}`);
         setStatus('Email aggiornata con successo! Verrai reindirizzato alla dashboard...');
-        setTimeout(() => navigate('/'), 3000);
+        localStorage.removeItem('accessToken'); // Opzionale: pulisci la sessione per richiedere le nuove credenziali
+localStorage.removeItem('refreshToken');
+setTimeout(() => navigate('/login'), 3000);
       } catch (error) {
         setStatus(error.response?.data?.message || 'Errore durante la verifica del token.');
       }

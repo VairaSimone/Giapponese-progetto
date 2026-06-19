@@ -239,6 +239,64 @@ const adesso = new Date();
   logger.info(`Email verificata con successo per l'utente ID: ${utente.id}`);
 };
 
+const richiediCambioEmail = async (userId, nuovaEmail) => {
+  const emailFormattata = nuovaEmail.toLowerCase().trim();
+
+  // Controlla se la nuova email è già usata da qualcun altro
+  const giaEsistente = await Utente.findOne({ where: { email: emailFormattata } });
+  if (giaEsistente) {
+    throw new AppError('Questa email è già associata a un altro account.', 409, 'EMAIL_TAKEN');
+  }
+
+  // Genera token sicuro
+  const tokenVerifica = crypto.randomBytes(32).toString('hex');
+  const scadenzaVerifica = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 ore
+
+  // Salva i dati sull'utente (incluso il campo temporaneo per la nuova email)
+  await Utente.update({
+    email_verification_token: tokenVerifica,
+    email_verification_expire: scadenzaVerifica,
+    nuova_email_pendente: emailFormattata // <- Campo fondamentale!
+  }, { where: { id: userId } });
+
+  // Invia l'email alla nuova casella
+  try {
+    await emailService.sendVerificationEmail(emailFormattata, tokenVerifica); 
+  } catch (err) {
+    logger.error(`Errore invio email cambio indirizzo a ${emailFormattata}: ${err.message}`);
+  }
+
+  return tokenVerifica;
+};
+
+const confermaCambioEmail = async (token) => {
+  // Cerca l'utente che possiede questo token
+  const utente = await Utente.findOne({
+    where: { email_verification_token: token }
+  });
+
+  if (!utente) {
+    throw new AppError('Token di verifica non valido o già utilizzato.', 400, 'INVALID_TOKEN');
+  }
+
+  // Controlla scadenza
+  if (utente.email_verification_expire && utente.email_verification_expire < new Date()) {
+    throw new AppError('Il token di verifica è scaduto. Richiedi un nuovo cambio email.', 400, 'EXPIRED_TOKEN');
+  }
+
+  // Aggiorna l'email reale con quella pendente e pulisci i campi
+  await utente.update({
+    email: utente.nuova_email_pendente,
+    nuova_email_pendente: null,
+    email_verification_token: null,
+    email_verification_expire: null,
+    refresh_token: null // Forza il relogin per sicurezza (opzionale)
+  });
+
+  logger.info(`Email aggiornata con successo per utente ID: ${utente.id}`);
+  return utente;
+};
+
 
 module.exports = {
   registraUtente,
@@ -247,5 +305,7 @@ module.exports = {
   refreshAccessToken,
   forgotPassword,
   resetPassword,
-  verificaEmail
+  verificaEmail,
+  richiediCambioEmail,
+  confermaCambioEmail
 };
