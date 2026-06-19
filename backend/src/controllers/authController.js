@@ -42,8 +42,7 @@ exports.login = catchAsync(async (req, res, next) => {
   const cookieOptions = {
     httpOnly: true, // Non accessibile da JavaScript nel browser (Protezione XSS)
     secure: process.env.NODE_ENV === 'production', // True se sei in HTTPS
-    sameSite: 'none', 
-    secure: true
+    sameSite: 'lax', 
   };
 
   // Setta i cookie nella response (imposta i maxAge coerenti con il config dei token)
@@ -117,7 +116,7 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 giorni
     });
 
