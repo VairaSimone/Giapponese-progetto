@@ -5,7 +5,7 @@ const authService = require('../services/authService');
 const Utente = require('../models/Utente');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
-
+const AppError = require('../utils/AppError');
 /**
  * Controller Auth — livello sottile tra route e service.
  * NON contiene logica di business: solo estrazione parametri dalla request

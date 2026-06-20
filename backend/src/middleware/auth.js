@@ -38,11 +38,15 @@ const authenticateJWT = catchAsync(async (req, res, next) => {
   if (utente.token_version !== decoded.token_version) {
     return next(new AppError('La tua sessione non è più valida. Effettua nuovamente il login.', 401, 'TOKEN_EXPIRED'));
   }
-
-  req.user = {
-    id: decoded.id,
-    ruolo: decoded.ruolo,
-  };
+req.user = {
+  id: utente.id,
+  nome: utente.nome,
+  cognome: utente.cognome,
+  eta: utente.eta,
+  email: utente.email,
+  ruolo: utente.ruolo,
+  classe: utente.classe
+};
 
   next();
 });

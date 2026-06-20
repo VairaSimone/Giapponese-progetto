@@ -80,8 +80,7 @@ const loginUtente = async (email, password) => {
   }
 
   if (!utente.email_verificata) {
-    throw new AppError('auth.email_not_verified', 401);
-  }
+throw new AppError('Email non verificata. Controlla la tua casella di posta.', 401);  }
 
   if (utente.tentativi_falliti > 0 || utente.bloccato_fino_al !== null) {
     utente.tentativi_falliti = 0;

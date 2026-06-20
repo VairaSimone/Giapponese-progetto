@@ -33,12 +33,11 @@ export const useResetPassword = () => {
 export const useVerifyEmail = (token) => {
   return useQuery({
     queryKey: ['verifyEmail', token],
-    // Passiamo il token al service esattamente come faceva mutate({ token })
-    queryFn: () => authService.verifyEmail({ token }), 
-    // La query parte in automatico solo se c'è un token
+    queryFn: () => authService.verifyEmail(token),
     enabled: !!token,
-    // Disabilitiamo i retry automatici per non bruciare il token lato backend
-    retry: false,
-    refetchOnWindowFocus: false,
+    staleTime: Infinity,          // Impedisce alla query di diventare stale e rifare il fetch
+    gcTime: 0,                    // Evita di mantenere il token nella cache globale dopo lo smontaggio
+    refetchOnWindowFocus: false,  // Disabilita il refetch al cambio di scheda/finestra
+    refetchOnReconnect: false     // Disabilita il refetch alla riconnessione
   });
 };

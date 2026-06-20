@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useVerifyEmail } from '../hooks/usePasswordAndEmailFlows';
 import { parseApiError } from '../utils/parseApiError';
