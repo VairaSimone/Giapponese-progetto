@@ -21,7 +21,6 @@ const transporter = nodemailer.createTransport({
 const sendVerificationEmail = async (email, token, lingua = 'it') => {
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
   
-  // Ottieni la funzione di traduzione fissata sulla lingua dell'utente
   const t = i18next.getFixedT(lingua);
   
   const mailOptions = {

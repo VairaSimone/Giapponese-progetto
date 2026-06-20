@@ -9,8 +9,8 @@ const rateLimit = require('express-rate-limit');
 const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
   max: parseInt(process.env.RATE_LIMIT_MAX) || 1000,
-  standardHeaders: true,  // Invia header X-RateLimit-* standard
-  legacyHeaders: false,   // Disabilita header X-RateLimit-* vecchi
+  standardHeaders: true,  
+  legacyHeaders: false,  
   message: {
     status: 'fail',
     code: 'TOO_MANY_REQUESTS',
@@ -21,17 +21,13 @@ const globalLimiter = rateLimit({
   },
 });
 
-/**
- * Rate limiter specifico per il login.
- * Più restrittivo: protegge da brute force sulle credenziali.
- * 5 tentativi ogni 15 minuti per IP.
- */
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minuti
   max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX) || 5,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Non conta i login riusciti (reset al successo)
+  skipSuccessfulRequests: true,
   message: {
     status: 'fail',
     code: 'TOO_MANY_LOGIN_ATTEMPTS',
@@ -42,10 +38,7 @@ const loginLimiter = rateLimit({
   },
 });
 
-/**
- * Rate limiter per le richieste di reset password.
- * Molto restrittivo per prevenire enumerazione email.
- */
+
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 ora
   max: 3,

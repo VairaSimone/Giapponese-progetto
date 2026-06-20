@@ -35,17 +35,15 @@ exports.register = catchAsync(async (req, res) => {
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   
-  // Il service ti restituisce i token generati
   const { accessToken, refreshToken } = await authService.loginUtente(email, password);
 
-  // Configurazione base per i cookie di sicurezza
+
   const cookieOptions = {
-    httpOnly: true, // Non accessibile da JavaScript nel browser (Protezione XSS)
-    secure: process.env.NODE_ENV === 'production', // True se sei in HTTPS
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production', 
     sameSite: 'lax', 
   };
 
-  // Setta i cookie nella response (imposta i maxAge coerenti con il config dei token)
   res.cookie('access_token', accessToken, {
     ...cookieOptions,
     maxAge: 15 * 60 * 1000 // 15 minuti in millisecondi
@@ -59,7 +57,6 @@ exports.login = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'Login effettuato con successo'
-    // NON inviare i token nel body
   });
 });
 
@@ -67,10 +64,8 @@ exports.login = catchAsync(async (req, res, next) => {
 // POST /api/auth/logout
 // ─────────────────────────────────────────────
 exports.logout = catchAsync(async (req, res, next) => {
-  // 1. Invoca il service per incrementare il token_version
   await authService.logout(req.user.id);
 
-  // 2. Cancella i cookie lato client
   res.clearCookie('access_token');
   res.clearCookie('refresh_token');
 
@@ -84,7 +79,6 @@ exports.logout = catchAsync(async (req, res, next) => {
 // GET /api/auth/me
 // ─────────────────────────────────────────────
 exports.me = catchAsync(async (req, res) => {
-  // req.user è già stato caricato e sanitizzato dal middleware authenticateJWT
   const { id, nome, cognome, eta, email, ruolo, classe } = req.user;
 
   res.status(200).json({
@@ -99,20 +93,14 @@ exports.me = catchAsync(async (req, res) => {
 // POST /api/auth/refresh-token
 // ─────────────────────────────────────────────
 exports.refreshToken = catchAsync(async (req, res, next) => {
-    // PRIMA: const { refreshToken } = req.body;
-    
-    // DOPO (CORRETTO):
     const refreshToken = req.cookies.refresh_token;
 
     if (!refreshToken) {
         return next(new AppError(req.t('auth.refresh_token_required'), 401));
     }
 
-    // Prosegui con la tua logica esistente di verifica del servizio...
     const tokens = await authService.refreshSession(refreshToken);
 
-    // Se rigeneri anche il refresh token (consigliato per il token rotation), 
-    // ricordati di reimpostarlo nel cookie:
     res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -135,12 +123,9 @@ exports.forgotPassword = catchAsync(async (req, res) => {
   const { email } = req.body;
 
   const risultato = await authService.forgotPassword(email);
-
-  // Risposta sempre 200 per non rivelare se l'email esiste
   res.status(200).json({
     status: 'success',
     message: 'Se l\'email è registrata, riceverai le istruzioni per il reset della password.',
-    // tokenDebug presente solo in sviluppo (viene da authService)
     ...(risultato.tokenDebug && { _debug_token: risultato.tokenDebug }),
   });
 });
@@ -192,7 +177,7 @@ exports.requestEmailChange = catchAsync(async (req, res) => {
 
 // GET /api/auth/confirm-email-change
 exports.confirmEmailChange = catchAsync(async (req, res) => {
-  const { token } = req.query; // Estrae il token dai parametri dell'URL (?token=...)
+  const { token } = req.query;
 
   if (!token) {
     return res.status(400).json({ status: 'fail', message: 'Token mancante.' });
@@ -210,7 +195,6 @@ exports.confirmEmailChange = catchAsync(async (req, res) => {
 // DELETE /api/auth/me
 // ─────────────────────────────────────────────
 exports.deleteMe = catchAsync(async (req, res) => {
-  // req.user.id viene iniettato dal middleware authenticateJWT
   await authService.eliminaAccount(req.user.id);
 
   res.status(200).json({
@@ -279,14 +263,12 @@ exports.updateLanguage = catchAsync(async (req, res) => {
     return res.status(400).json({ status: 'fail', message: 'Lingua non supportata.' });
   }
 
-  // Puoi creare una funzione in authService, o usare direttamente il modello
   const utente = await Utente.findByPk(req.user.id);
   utente.lingua = lingua;
   await utente.save();
 
   res.status(200).json({
     status: 'success',
-    // Utilizziamo req.t per rispondere nella lingua appena selezionata o rilevata
     message: req.t('messages.langChanged'), 
     data: { utente: utente.toPublicJSON() }
   });

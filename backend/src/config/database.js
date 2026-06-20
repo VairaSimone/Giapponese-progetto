@@ -40,7 +40,7 @@ timezone: '+02:00',
       typeCast: true,
     },
 
-    timezone: '+01:00', // Europe/Rome
+    timezone: '+01:00', 
   }
 );
 

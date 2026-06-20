@@ -41,7 +41,7 @@ Utente.init(
   {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // Genera automaticamente un UUIDv4 univoco
+      defaultValue: DataTypes.UUIDV4, 
       primaryKey: true,
     },
 
@@ -84,7 +84,6 @@ Utente.init(
         isEmail: { msg: 'Formato email non valido' },
         notEmpty: { msg: 'L\'email non può essere vuota' },
       },
-      // Salva sempre in minuscolo
       set(value) {
         this.setDataValue('email', value ? value.toLowerCase().trim() : value);
       },
@@ -93,14 +92,13 @@ Utente.init(
     password: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      // Non restituire mai la password nelle query di default
-      // (la escludiamo esplicitamente nelle query sensibili)
+
     },
 
     ruolo: {
       type: DataTypes.ENUM(...RUOLI_VALIDI),
       allowNull: false,
-      defaultValue: 'studente', // Impostato automaticamente alla registrazione
+      defaultValue: 'studente',
       validate: {
         isIn: {
           args: [RUOLI_VALIDI],
@@ -130,7 +128,6 @@ Utente.init(
       type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
-      // Campo sensibile, non includerlo nelle risposte pubbliche
     },
 
     reset_password_token: {
@@ -226,7 +223,6 @@ Utente.init(
   }
 );
 
-// Esportiamo anche le costanti per riutilizzarle nei validator
 Utente.CLASSI_VALIDE = CLASSI_VALIDE;
 Utente.RUOLI_VALIDI = RUOLI_VALIDI;
 

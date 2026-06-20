@@ -13,9 +13,8 @@ const emailService = require('./emailService');
 // ─────────────────────────────────────────────
 const MAX_TENTATIVI_FALLITI = 5;
 const TEMPO_BLOCCO_MINUTI = 15;
-// Aggiunta la proprietà 'lingua' ai parametri ricevuti (con fallback a 'it')
 const registraUtente = async ({ nome, cognome, eta, email, password, classe, lingua = 'it' }) => {
-  // Genera un token sicuro per la verifica email
+
   const tokenVerifica = crypto.randomBytes(32).toString('hex');
   const scadenzaVerifica = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ore di validità
 
@@ -24,16 +23,15 @@ const registraUtente = async ({ nome, cognome, eta, email, password, classe, lin
     cognome: cognome.trim(),
     eta,
     email: email.toLowerCase().trim(),
-    password, 
-    ruolo: 'studente', 
+    password,
+    ruolo: 'studente',
     classe,
-    lingua, // Salviamo la lingua scelta in fase di registrazione
+    lingua,
     email_verificata: false,
     email_verification_token: tokenVerifica,
     email_verification_expire: scadenzaVerifica,
   });
 
-  // Invia l'email passando la lingua salvata sul record utente
   try {
     await emailService.sendVerificationEmail(nuovoUtente.email, tokenVerifica, nuovoUtente.lingua);
   } catch (err) {
@@ -50,7 +48,6 @@ const registraUtente = async ({ nome, cognome, eta, email, password, classe, lin
 // ─────────────────────────────────────────────
 
 const loginUtente = async (email, password) => {
-  // 1. Cerca l'utente
   const utente = await Utente.findOne({ where: { email } });
 
   if (!utente) {
@@ -58,27 +55,22 @@ const loginUtente = async (email, password) => {
     throw new AppError('Credenziali non valide', 401);
   }
 
-  // 2. Controlla se l'account è bloccato prima ancora di verificare la password
   if (utente.bloccato_fino_al && utente.bloccato_fino_al > new Date()) {
     const millisecondiRimanenti = utente.bloccato_fino_al.getTime() - new Date().getTime();
     const minutiRimanenti = Math.ceil(millisecondiRimanenti / 60000);
     throw new AppError(`Account bloccato per troppi tentativi. Riprova tra ${minutiRimanenti} minuti.`, 403);
   }
 
-  // 3. Verifica la password
-  // Usa il metodo del modello, o bcrypt.compare(password, utente.password) se lo fai inline
   const isPasswordValid = await utente.verificaPassword(password);
 
-  // 4. Gestione password errata (incremento fallimenti)
   if (!isPasswordValid) {
     utente.tentativi_falliti += 1;
 
     if (utente.tentativi_falliti >= MAX_TENTATIVI_FALLITI) {
-      // Blocca l'account per 15 minuti da ora
       const dataSblocco = new Date();
       dataSblocco.setMinutes(dataSblocco.getMinutes() + TEMPO_BLOCCO_MINUTI);
       utente.bloccato_fino_al = dataSblocco;
-      
+
       await utente.save();
       throw new AppError(`Troppi tentativi falliti. Account bloccato per ${TEMPO_BLOCCO_MINUTI} minuti.`, 403);
     } else {
@@ -87,19 +79,16 @@ const loginUtente = async (email, password) => {
     }
   }
 
-  // 5. Controllo se l'email è verificata (se usi questo sistema nel tuo progetto)
-if (!utente.email_verificata) {
+  if (!utente.email_verificata) {
     throw new AppError(req.t('auth.email_not_verified'), 401);
-}
+  }
 
-  // 6. Login effettuato con successo: RESETTIAMO i contatori
   if (utente.tentativi_falliti > 0 || utente.bloccato_fino_al !== null) {
     utente.tentativi_falliti = 0;
     utente.bloccato_fino_al = null;
     await utente.save();
   }
 
-  // 7. Genera i token (assumendo che le funzioni richiedano l'oggetto utente)
   const accessToken = generateAccessToken(utente);
   const refreshToken = generateRefreshToken(utente);
 
@@ -117,12 +106,10 @@ const fakeHashCompare = async () => {
 // ─────────────────────────────────────────────
 
 const logoutUtente = async (userId) => {
-const utente = await Utente.findByPk(userId);
+  const utente = await Utente.findByPk(userId);
 
-if (utente) {
-    // Incrementando la versione, rendiamo invalidi TUTTI i JWT emessi prima di questo momento
-    utente.token_version += 1; 
-    
+  if (utente) {
+    utente.token_version += 1;
     await utente.save();
   }
 };
@@ -183,7 +170,6 @@ const forgotPassword = async (email) => {
     reset_password_expire: scadenza,
   });
 
-  // Passiamo utente.lingua recuperata dal record sul Database
   try {
     await emailService.sendPasswordResetEmail(utente.email, token, utente.lingua);
   } catch (err) {
@@ -216,7 +202,7 @@ const resetPassword = async (token, nuovaPassword) => {
   if (utente.reset_password_expire && utente.reset_password_expire < adesso) {
     throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
   }
-  
+
   await utente.update({
     password: nuovaPassword,
     reset_password_token: null,
@@ -281,7 +267,6 @@ const richiediCambioEmail = async (userId, nuovaEmail) => {
     nuova_email_pendente: emailFormattata
   });
 
-  // Passiamo utente.lingua recuperata in modo che riceva la notifica nella lingua corretta
   try {
     await emailService.sendEmailChangeEmail(emailFormattata, tokenVerifica, utente.lingua);
   } catch (err) {
@@ -297,7 +282,7 @@ const richiediCambioEmail = async (userId, nuovaEmail) => {
 
 const confermaCambioEmail = async (token) => {
   const utente = await Utente.findOne({
-    where: { 
+    where: {
       email_verification_token: token,
       nuova_email_pendente: { [Op.ne]: null }
     }
@@ -361,15 +346,15 @@ const getUtentiPerInsegnante = async (filtri) => {
 
   const utenti = await Utente.findAll({
     where,
-    attributes: { 
+    attributes: {
       exclude: [
-        'password', 
-        'refresh_token', 
-        'reset_password_token', 
-        'reset_password_expire', 
-        'email_verification_token', 
+        'password',
+        'refresh_token',
+        'reset_password_token',
+        'reset_password_expire',
+        'email_verification_token',
         'email_verification_expire'
-      ] 
+      ]
     },
     order: [['cognome', 'ASC'], ['nome', 'ASC']]
   });
@@ -393,7 +378,7 @@ const aggiornaRuoloUtente = async (userId, nuovoRuolo) => {
 
   await utente.update({ ruolo: nuevoRuolo });
   logger.info(`Ruolo aggiornato per utente ID: ${userId} -> Nuovo Ruolo: ${nuovoRuolo}`);
-  
+
   return utente.toPublicJSON();
 };
 
@@ -407,7 +392,7 @@ module.exports = {
   verificaEmail,
   richiediCambioEmail,
   confermaCambioEmail,
-  eliminaAccount,      
-  getUtentiPerInsegnante, 
+  eliminaAccount,
+  getUtentiPerInsegnante,
   aggiornaRuoloUtente
 };

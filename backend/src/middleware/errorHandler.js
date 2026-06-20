@@ -10,7 +10,6 @@ const AppError = require('../utils/AppError');
 /** Sequelize: violazione di unique constraint (es. email duplicata) */
 const handleSequelizeUniqueError = (err) => {
   const field = err.errors?.[0]?.path || 'campo';
-  // Personalizziamo il messaggio per renderlo più leggibile all'utente finale
   const messaggio = field === 'email' 
     ? 'Questo indirizzo email è già registrato. Scegline un altro.' 
     : `Valore duplicato per il campo: ${field}`;
@@ -50,7 +49,6 @@ const sendErrorDev = (err, res) => {
 /** In produzione: solo informazioni sicure da esporre al client */
 const sendErrorProd = (err, res) => {
   if (err.isOperational) {
-    // Errore atteso: possiamo dire qualcosa di utile al client
     return res.status(err.statusCode).json({
       status: err.status,
       code: err.code,
@@ -72,7 +70,6 @@ const sendErrorProd = (err, res) => {
 // ─────────────────────────────────────────────
 
 const errorHandler = (err, req, res, next) => {
-  // Spostiamo la conversione in cima, così vale sia per DEV che per PROD
   let error = Object.assign(Object.create(Object.getPrototypeOf(err)), err);
   error.message = err.message;
   error.stack = err.stack;

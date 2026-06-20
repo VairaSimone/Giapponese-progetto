@@ -103,8 +103,8 @@ const validateChangeEmail = [
 const validateRefreshToken = [
     cookie('refresh_token')
         .notEmpty()
-        .withMessage('auth.refresh_token_required'), // o la tua stringa di traduzione
-    validate // il tuo middleware che controlla i risultati di express-validator
+        .withMessage('auth.refresh_token_required'),
+    validate 
 ];
 
 // ─────────────────────────────────────────────

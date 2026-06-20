@@ -44,11 +44,12 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.set('trust proxy', 1);
+
 // ─────────────────────────────────────────────
 // RATE LIMITING GLOBALE
 // Prima linea di difesa contro flooding/DDoS
 // ─────────────────────────────────────────────
+app.set('trust proxy', 1);
 app.use(globalLimiter);
 
 // ─────────────────────────────────────────────

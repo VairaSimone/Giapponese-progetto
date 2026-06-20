@@ -1,13 +1,11 @@
 'use strict';
 
-// Carica variabili d'ambiente come PRIMA cosa
 require('dotenv').config();
 
 const app = require('./app');
 const sequelize = require('./config/database');
 const logger = require('./utils/logger');
 
-// Import modelli per registrarli su Sequelize prima della sync
 require('./models/Utente');
 
 const PORT = parseInt(process.env.PORT) || 3000;
