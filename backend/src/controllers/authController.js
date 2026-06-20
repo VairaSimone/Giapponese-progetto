@@ -79,15 +79,15 @@ exports.logout = catchAsync(async (req, res, next) => {
 // GET /api/auth/me
 // ─────────────────────────────────────────────
 exports.me = catchAsync(async (req, res) => {
-  const { id, nome, cognome, eta, email, ruolo, classe } = req.user;
+  const { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata } = req.user;
 
   res.status(200).json({
     status: 'success',
     data: {
-      utente: { id, nome, cognome, eta, email, ruolo, classe },
+      utente: { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata },
     },
   });
-});
+}); 
 
 // ─────────────────────────────────────────────
 // POST /api/auth/refresh-token

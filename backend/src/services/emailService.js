@@ -79,7 +79,7 @@ const sendPasswordResetEmail = async (email, token, lingua = 'it') => {
  * Invia l'email per la conferma del cambio email
  */
 const sendEmailChangeEmail = async (email, token, lingua = 'it') => {
-  const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email-change?token=${token}`;
+const url = `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/auth/confirm-email-change?token=${token}`;
   
   const t = i18next.getFixedT(lingua);
 

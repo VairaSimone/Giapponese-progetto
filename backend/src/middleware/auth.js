@@ -45,7 +45,9 @@ req.user = {
   eta: utente.eta,
   email: utente.email,
   ruolo: utente.ruolo,
-  classe: utente.classe
+  classe: utente.classe,
+  lingua: utente.lingua,
+  email_verificata: utente.email_verificata
 };
 
   next();
