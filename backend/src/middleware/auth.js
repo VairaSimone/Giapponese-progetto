@@ -22,8 +22,7 @@ const authenticateJWT = (req, res, next) => {
     }
 
    
-    const decoded = jwt.verify(token, jwtConfig.accessSecret);
-
+const decoded = jwt.verify(token, jwtConfig.access.secret);
     req.user = {
       id: decoded.id,
       ruolo: decoded.ruolo

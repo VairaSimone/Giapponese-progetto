@@ -64,7 +64,7 @@ exports.login = catchAsync(async (req, res, next) => {
 // POST /api/auth/logout
 // ─────────────────────────────────────────────
 exports.logout = catchAsync(async (req, res, next) => {
-  await authService.logout(req.user.id);
+  await authService.logoutUtente(req.user.id);
 
   res.clearCookie('access_token');
   res.clearCookie('refresh_token');
@@ -99,7 +99,7 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
         return next(new AppError(req.t('auth.refresh_token_required'), 401));
     }
 
-    const tokens = await authService.refreshSession(refreshToken);
+    const tokens = await authService.refreshAccessToken(refreshToken);
 
     res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
@@ -185,10 +185,8 @@ exports.confirmEmailChange = catchAsync(async (req, res) => {
 
   await authService.confermaCambioEmail(token);
   
-  res.status(200).json({
-    status: 'success',
-    message: 'Email modificata e confermata con successo.',
-  });
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+  res.redirect(`${FRONTEND_URL}/verify-email-change?token=${token}&status=success`);
 });
 
 // ─────────────────────────────────────────────
@@ -197,7 +195,7 @@ exports.confirmEmailChange = catchAsync(async (req, res) => {
 exports.deleteMe = catchAsync(async (req, res) => {
   await authService.eliminaAccount(req.user.id);
 
-  res.status(200).json({
+  res.status(204).json({
     status: 'success',
     message: 'Il tuo account e tutti i dati associati sono stati eliminati definitivamente.',
   });

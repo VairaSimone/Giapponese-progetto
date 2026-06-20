@@ -2,7 +2,6 @@
 const { cookie } = require('express-validator');
 const { body } = require('express-validator');
 const Utente = require('../models/Utente');
-const validate = require('../middleware/validate');
 
 // ─────────────────────────────────────────────
 // Regole di validazione riutilizzabili
@@ -104,7 +103,7 @@ const validateRefreshToken = [
     cookie('refresh_token')
         .notEmpty()
         .withMessage('auth.refresh_token_required'),
-    validate 
+     
 ];
 
 // ─────────────────────────────────────────────

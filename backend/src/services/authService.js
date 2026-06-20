@@ -80,7 +80,7 @@ const loginUtente = async (email, password) => {
   }
 
   if (!utente.email_verificata) {
-    throw new AppError(req.t('auth.email_not_verified'), 401);
+    throw new AppError('auth.email_not_verified', 401);
   }
 
   if (utente.tentativi_falliti > 0 || utente.bloccato_fino_al !== null) {
@@ -376,7 +376,7 @@ const aggiornaRuoloUtente = async (userId, nuovoRuolo) => {
     throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
   }
 
-  await utente.update({ ruolo: nuevoRuolo });
+  await utente.update({ ruolo: nuovoRuolo });
   logger.info(`Ruolo aggiornato per utente ID: ${userId} -> Nuovo Ruolo: ${nuovoRuolo}`);
 
   return utente.toPublicJSON();
