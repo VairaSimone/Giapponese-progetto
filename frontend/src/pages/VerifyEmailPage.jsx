@@ -7,25 +7,7 @@ import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import styles from './AuthPage.module.css';
 
-/**
- * Pagina raggiunta dal link nell'email di verifica registrazione:
- * /verify-email?token=<hex64>
- *
- * NOTA SU REACT STRICTMODE + CALLBACK DI MUTATE(): le callback
- * onSuccess/onError passate direttamente a mutate(variables, { onSuccess,
- * onError }) sono legate al componente chiamante. Se StrictMode smonta
- * quel componente prima che la risposta arrivi, le callback possono non
- * essere mai invocate — anche se la mutation stessa completa con
- * successo (visibile nei devtools). Per questo NON ci affidiamo a
- * onSuccess/onError, ma leggiamo direttamente lo stato della mutation
- * (isSuccess/isError/data/error), che è mantenuto nella cache di
- * TanStack Query e sopravvive ai remount.
- *
- * Il guard a livello di MODULO (tokenGiaInviati) serve solo a evitare di
- * chiamare mutate() due volte per lo stesso token durante il doppio mount
- * di StrictMode — non per propagare il risultato (che ora arriva dallo
- * stato della mutation, non da una callback).
- */
+
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();

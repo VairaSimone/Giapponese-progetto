@@ -8,13 +8,7 @@ import { router } from './routes/router';
 import { setupAuthInterceptor } from './api/authInterceptor';
 import { useCurrentUser } from './hooks/useCurrentUser';
 
-/**
- * Esegue il bootstrap della sessione: chiama GET /me una sola volta
- * all'avvio dell'app per ricostruire lo stato di autenticazione a partire
- * dal cookie httpOnly esistente (se presente). Va montato DENTRO
- * QueryClientProvider, motivo per cui vive in un componente figlio
- * separato da App invece che in App stesso.
- */
+
 const SessionBootstrap = () => {
   useCurrentUser();
   return null;

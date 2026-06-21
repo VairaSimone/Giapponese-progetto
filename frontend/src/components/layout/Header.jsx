@@ -23,9 +23,6 @@ const Header = () => {
       toast.success('Logout effettuato con successo.');
       navigate(ROUTES.LOGIN);
     } catch {
-      // Anche in caso di errore di rete, lo stato locale viene pulito
-      // (onSettled in useLogout) — l'utente viene comunque disconnesso
-      // lato client per sicurezza.
       navigate(ROUTES.LOGIN);
     }
   };

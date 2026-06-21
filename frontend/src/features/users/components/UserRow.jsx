@@ -18,11 +18,6 @@ const UserRow = ({ utente }) => {
   const deleteUserMutation = useDeleteUserByTeacher();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  // NOTA UX (non imposta dal backend): il backend non impedisce a un
-  // insegnante di cambiare il proprio ruolo o di auto-eliminarsi tramite
-  // questi stessi endpoint. Disabilitiamo queste azioni sulla propria riga
-  // lato client per prevenire blocchi accidentali (es. un insegnante che si
-  // declassa a studente perdendo l'accesso alla pagina che sta usando).
   const isSelf = currentUser?.id === utente.id;
 
   const handleRoleChange = async (event) => {

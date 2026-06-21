@@ -29,9 +29,7 @@ const ForgotPasswordPage = () => {
     setFormError(null);
     try {
       await forgotPasswordMutation.mutateAsync(values);
-      // Il backend risponde sempre 200 indipendentemente dall'esistenza
-      // dell'email (anti user-enumeration), quindi mostriamo sempre lo
-      // stesso messaggio di successo generico.
+
       setIsSuccess(true);
     } catch (error) {
       const parsed = parseApiError(error);

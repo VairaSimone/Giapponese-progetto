@@ -1,10 +1,6 @@
 import styles from './EmptyState.module.css';
 
-/**
- * Stato vuoto per liste senza risultati (es. nessun utente trovato con i
- * filtri correnti). Non lascia mai una tabella/lista "silenziosamente
- * vuota": spiega cosa è successo e, quando ha senso, suggerisce un'azione.
- */
+
 const EmptyState = ({ title, description, action }) => {
   return (
     <div className={styles.wrapper}>

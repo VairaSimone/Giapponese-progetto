@@ -38,9 +38,7 @@ export const forgotPassword = async ({ email }) => {
   return data;
 };
 
-/**
- * NOTA: il backend si aspetta il campo `nuovaPassword`, non `password`.
- */
+
 export const resetPassword = async ({ token, nuovaPassword }) => {
   const { data } = await apiClient.post('/auth/reset-password', {
     token,

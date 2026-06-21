@@ -18,12 +18,7 @@ import UsersManagementPage from '../pages/UsersManagementPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import ForbiddenPage from '../pages/ForbiddenPage';
 
-/**
- * Albero delle route. Ogni route corrisponde a uno schermo reale collegato
- * a uno o più endpoint del backend (vedi mappatura endpoint -> schermate
- * nel README). Nessuna route qui sotto rappresenta funzionalità non
- * supportate dal backend.
- */
+
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,

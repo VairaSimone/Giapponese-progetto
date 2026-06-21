@@ -1,16 +1,6 @@
 import { z } from 'zod';
 import { CLASSI, ETA_MIN, ETA_MAX } from '../constants/domain';
 
-/**
- * Tutti gli schemi qui sotto rispecchiano FEDELMENTE le regole reali
- * implementate in `backend/src/validators/authValidators.js` e nel modello
- * `Utente.js`. Non sono "inventati" sulla base della sola documentazione:
- * la regex password, i range numerici e i pattern sui nomi sono stati
- * copiati 1:1 dal codice sorgente per garantire che la validazione
- * client-side anticipi esattamente ciò che il server accetterà o rifiuterà,
- * evitando submit che il backend rifiuterebbe comunque (422) o falsi negativi
- * lato client più permissivi del server.
- */
 
 // Stessa regex usata in authValidators.js -> passwordRegex
 const PASSWORD_REGEX =
