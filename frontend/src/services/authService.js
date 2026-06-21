@@ -13,6 +13,16 @@ export const register = async (payload) => {
   return data;
 };
 
+/**
+ * Richiede il re-invio dell'email di verifica per un account registrato
+ * ma non ancora verificato. Il backend risponde sempre con 200 e messaggio
+ * generico (anti user-enumeration).
+ */
+export const resendVerification = async ({ email }) => {
+  const { data } = await apiClient.post('/auth/resend-verification', { email });
+  return data;
+};
+
 export const login = async ({ email, password }) => {
   const { data } = await apiClient.post('/auth/login', { email, password });
   return data;

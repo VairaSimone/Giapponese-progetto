@@ -45,17 +45,16 @@ const LoginPage = () => {
 
       // 403 = account bloccato per troppi tentativi falliti (vedi
       // authService.loginUtente, MAX_TENTATIVI_FALLITI = 5)
-      if (parsed.statusCode === 403) {
+      if (parsed.statusCode === 403 || parsed.code === API_ERROR_CODES.ACCOUNT_LOCKED) {
         setIsLocked(true);
         setFormError(parsed.message);
         return;
       }
 
-      // Caso speciale: email non verificata. Il backend lancia AppError
-      // con messaggio letterale 'auth.email_not_verified' (chiave i18n
-      // non risolta, bug minore del backend) — lo normalizziamo qui per
-      // non mostrare la chiave grezza all'utente.
-      if (parsed.message === 'auth.email_not_verified') {
+      // Caso speciale: email non verificata. Il backend ora restituisce il
+      // codice machine-readable EMAIL_NOT_VERIFIED, su cui basiamo la
+      // gestione dedicata (niente più dipendenza dal testo del messaggio).
+      if (parsed.code === API_ERROR_CODES.EMAIL_NOT_VERIFIED) {
         setFormError(
           'La tua email non è ancora stata verificata. Controlla la tua casella di posta per il link di conferma.'
         );
