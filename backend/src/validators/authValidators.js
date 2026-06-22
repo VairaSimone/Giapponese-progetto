@@ -8,7 +8,7 @@ const Utente = require('../models/Utente');
 // ─────────────────────────────────────────────
 
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-
+const nameRegex = /^[\p{L}\p{M}\s'-]+$/u;
 const passwordRules = (fieldName = 'password') =>
   body(fieldName)
     .trim()
@@ -41,13 +41,13 @@ const validateRegistrazione = [
     .trim()
     .notEmpty().withMessage('Il nome è obbligatorio')
     .isLength({ min: 2, max: 100 }).withMessage('Il nome deve avere tra 2 e 100 caratteri')
-    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/).withMessage('Il nome contiene caratteri non validi'),
+    .matches(nameRegex).withMessage('Il nome contiene caratteri non validi'),
 
   body('cognome')
     .trim()
     .notEmpty().withMessage('Il cognome è obbligatorio')
     .isLength({ min: 2, max: 100 }).withMessage('Il cognome deve avere tra 2 e 100 caratteri')
-    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/).withMessage('Il cognome contiene caratteri non validi'),
+    .matches(nameRegex).withMessage('Il cognome contiene caratteri non validi'),
 
   body('eta')
     .notEmpty().withMessage("L'età è obbligatoria")
@@ -64,8 +64,7 @@ const validateRegistrazione = [
     .isIn(Utente.CLASSI_VALIDE)
     .withMessage(`La classe deve essere una di: ${Utente.CLASSI_VALIDE.join(', ')}`),
 
-  // `lingua` è OPZIONALE: il frontend la invia (lingua attiva nella UI) per
-  // localizzare l'email di verifica. Se assente, il service usa il default.
+  
   body('lingua')
     .optional()
     .isIn(['it', 'en'])

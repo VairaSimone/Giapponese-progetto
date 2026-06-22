@@ -21,7 +21,7 @@ const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 // Stessa regex usata per nome/cognome (supporta accenti, apostrofi, trattini)
-const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s'-]+$/;
+const NAME_REGEX = /^[\p{L}\p{M}\s'-]+$/u;
 
 const buildPasswordSchema = (t) =>
   z

@@ -10,7 +10,7 @@ import i18n, { SUPPORTED_LANGUAGES } from '../i18n';
  * store Zustand. Va usato una volta al boot dell'app (in App.jsx) per
  * ricostruire la sessione a partire dal cookie httpOnly esistente.
  *
- * Sincronizzazione lingua (requisito): la lingua salvata nel profilo
+ * Sincronizzazione lingua: la lingua salvata nel profilo
  * backend ha PRIORITÀ su quella rilevata dal browser. Quando /me ritorna
  * una `lingua` valida e diversa da quella attiva, aggiorniamo l'intera
  * interfaccia senza refresh tramite i18n.changeLanguage (che persiste

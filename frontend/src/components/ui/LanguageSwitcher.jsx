@@ -5,7 +5,7 @@ import { SUPPORTED_LANGUAGES } from '../../i18n';
 import styles from './LanguageSwitcher.module.css';
 
 /**
- * Selettore di lingua manuale (requisito 5).
+ * Selettore di lingua manuale 
  *
  * - Aggiorna immediatamente tutte le traduzioni via i18n.changeLanguage
  *   (la preferenza è persistita su localStorage dal LanguageDetector).

@@ -39,7 +39,7 @@ const getCookie = (name) => {
 };
 
 apiClient.interceptors.request.use((config) => {
-  // Lingua corrente -> sempre disponibile al backend per i contenuti localizzati
+
   config.params = { ...(config.params || {}), lang: getActiveLanguage() };
 
   const method = (config.method || 'get').toLowerCase();

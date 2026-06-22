@@ -29,9 +29,6 @@ const clearAuthCookies = (res) => {
 exports.register = catchAsync(async (req, res) => {
   const { nome, cognome, eta, email, password, classe, lingua } = req.body;
 
-  // `lingua` è inviata dal frontend (lingua attiva nella UI) e usata dal
-  // service per localizzare l'email di verifica. Se assente, il service
-  // applica il default ('it').
   const utente = await authService.registraUtente({
     nome,
     cognome,
