@@ -11,7 +11,10 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 3306,
     dialect: 'mysql',
-timezone: '+02:00',
+    // Timezone fisso a UTC: nessun offset hardcoded legato all'ora legale.
+    // Tutte le date vengono persistite e lette in UTC; la conversione al
+    // fuso orario locale è responsabilità del client.
+    timezone: '+00:00',
     // Pool di connessioni: evita di aprire/chiudere una connessione per ogni query
     pool: {
       max: 10,         // connessioni simultanee massime

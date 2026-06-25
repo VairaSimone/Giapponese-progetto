@@ -127,6 +127,13 @@ const validateConfirmEmailChange = [
   tokenRules('token', 'Token non valido'),
 ];
 
+// ─────────────────────────────────────────────
+// POST /api/auth/resend-verification
+// ─────────────────────────────────────────────
+const validateResendVerification = [
+  emailRules('email'),
+];
+
 module.exports = {
   validateRegistrazione,
   validateLogin,
@@ -136,4 +143,5 @@ module.exports = {
   validateRefreshToken,
   validateVerifyEmail,
   validateConfirmEmailChange,
+  validateResendVerification,
 };

@@ -14,6 +14,7 @@ import TextField from '../components/ui/TextField';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import FormError from '../components/shared/FormError';
+import GoogleAuthButton from '../features/auth/components/GoogleAuthButton';
 import styles from './AuthPage.module.css';
 
 const RegisterPage = () => {
@@ -87,6 +88,10 @@ const RegisterPage = () => {
         </div>
 
         <FormError message={formError} />
+
+        <GoogleAuthButton label={t('auth.google.buttonRegister')} />
+
+        <div className={styles.separator}>{t('auth.orSeparator')}</div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className={styles.formRow}>

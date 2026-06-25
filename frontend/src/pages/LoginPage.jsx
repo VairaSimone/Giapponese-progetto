@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { buildLoginSchema } from '../validators/authSchemas';
 import { useLogin } from '../hooks/useLogin';
+import { useResendVerification } from '../hooks/useResendVerification';
 import { parseApiError } from '../utils/parseApiError';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { ROUTES } from '../constants/routes';
@@ -15,26 +16,42 @@ import TextField from '../components/ui/TextField';
 import Button from '../components/ui/Button';
 import FormError from '../components/shared/FormError';
 import LockoutNotice from '../features/auth/components/LockoutNotice';
+import GoogleAuthButton from '../features/auth/components/GoogleAuthButton';
 import styles from './AuthPage.module.css';
 
 const LoginPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const loginMutation = useLogin();
+  const resendMutation = useResendVerification();
   const [formError, setFormError] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutRaw, setLockoutRaw] = useState(null);
+  // Mostra il blocco "re-invia verifica" quando il login fallisce per email
+  // non verificata.
+  const [showResend, setShowResend] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
 
   const schema = useMemo(() => buildLoginSchema(t), [t]);
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
   });
+
+  // Errore proveniente dal redirect di fallimento OAuth Google
+  // (?error=google), gestito una sola volta al mount.
+  useEffect(() => {
+    if (searchParams.get('error') === 'google') {
+      setFormError(t('auth.google.error'));
+    }
+  }, [searchParams, t]);
 
   const redirectTo = location.state?.from?.pathname || ROUTES.DASHBOARD;
 
@@ -42,6 +59,8 @@ const LoginPage = () => {
     setFormError(null);
     setIsLocked(false);
     setLockoutRaw(null);
+    setShowResend(false);
+    setResendDone(false);
 
     try {
       await loginMutation.mutateAsync(values);
@@ -63,7 +82,29 @@ const LoginPage = () => {
         return;
       }
 
+      // Email non verificata: offri il re-invio del link di verifica.
+      if (parsed.code === API_ERROR_CODES.EMAIL_NOT_VERIFIED) {
+        setShowResend(true);
+      }
+
       setFormError(message);
+    }
+  };
+
+  const handleResend = async () => {
+    const email = getValues('email');
+    if (!email) {
+      setFormError(t('validation.emailRequired'));
+      return;
+    }
+
+    try {
+      await resendMutation.mutateAsync({ email });
+    } catch {
+      // La risposta è generica anche in caso di errore lato server: non
+      // riveliamo nulla all'utente, mostriamo comunque l'esito neutro.
+    } finally {
+      setResendDone(true);
     }
   };
 
@@ -83,6 +124,31 @@ const LoginPage = () => {
         ) : (
           <FormError message={formError} />
         )}
+
+        {showResend && (
+          <div className={styles.resendBox}>
+            {resendDone ? (
+              <p className={styles.resendText}>{t('auth.resend.done')}</p>
+            ) : (
+              <>
+                <p className={styles.resendText}>{t('auth.resend.prompt')}</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  isLoading={resendMutation.isPending}
+                  onClick={handleResend}
+                >
+                  {t('auth.resend.cta')}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <GoogleAuthButton />
+
+        <div className={styles.separator}>{t('auth.orSeparator')}</div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <TextField

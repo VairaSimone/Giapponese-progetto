@@ -32,6 +32,7 @@ class Utente extends Model {
       classe: this.classe,
       lingua: this.lingua,
       email_verificata: this.email_verificata,
+      profilo_completo: this.profilo_completo,
       created_at: this.created_at,
     };
   }
@@ -65,7 +66,10 @@ Utente.init(
 
     eta: {
       type: DataTypes.TINYINT.UNSIGNED,
-      allowNull: false,
+      // Reso opzionale a livello DB per consentire la registrazione
+      // automatica via Google (profilo incompleto). La registrazione
+      // classica continua a richiederla tramite i validator Express/Zod.
+      allowNull: true,
       validate: {
         min: { args: [14], msg: 'L\'età minima è 14 anni' },
         max: { args: [99], msg: 'L\'età massima è 99 anni' },
@@ -109,7 +113,9 @@ Utente.init(
 
     classe: {
       type: DataTypes.ENUM(...CLASSI_VALIDE),
-      allowNull: false,
+      // Reso opzionale a livello DB per la registrazione automatica via
+      // Google. La registrazione classica continua a richiederla.
+      allowNull: true,
       validate: {
         isIn: {
           args: [CLASSI_VALIDE],
@@ -124,10 +130,22 @@ Utente.init(
       defaultValue: false,
     },
 
+    // L'hash SHA-256 (hex) di un token è SEMPRE lungo 64 caratteri: usare
+    // STRING(64) invece di TEXT permette di indicizzare la colonna ed
+    // eliminare il full table scan durante il lookup del refresh token.
     refresh_token: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(64),
       allowNull: true,
       defaultValue: null,
+    },
+
+    // Identificativo univoco dell'account Google collegato (sub OIDC).
+    // Null per gli account creati con email/password classica.
+    google_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      field: 'google_id',
     },
 
     reset_password_token: {
@@ -188,6 +206,15 @@ Utente.init(
         },
       },
     },
+
+    // false per gli account creati automaticamente via Google senza
+    // età/classe: permette al frontend di richiedere il completamento profilo.
+    profilo_completo: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'profilo_completo',
+    },
   },
   {
     sequelize,
@@ -204,6 +231,11 @@ Utente.init(
       { fields: ['reset_password_token'] },
       { fields: ['email_verification_token'] },
       { fields: ['ruolo'] },
+      // Indice sul refresh token: elimina il full table scan durante il
+      // lookup eseguito ad ogni refresh della sessione.
+      { fields: ['refresh_token'] },
+      // Indice sul google_id: lookup rapido in fase di login OAuth.
+      { fields: ['google_id'] },
     ],
 
     // Hook: hash della password prima di ogni INSERT/UPDATE

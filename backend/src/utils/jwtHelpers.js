@@ -34,6 +34,9 @@ const generateRefreshToken = (user) => {
   return jwt.sign(
     {
       id: user.id,
+      // Versione del token: incrementata su logout, reset password e revoca.
+      // Permette di invalidare TUTTI i refresh token emessi in precedenza.
+      token_version: user.token_version,
     },
     jwtConfig.refresh.secret,
     {

@@ -2,7 +2,6 @@
 
 const catchAsync = require('../utils/catchAsync');
 const authService = require('../services/authService');
-const Utente = require('../models/Utente');
 const AppError = require('../utils/AppError');
 const {
   baseCookieOptions,
@@ -12,15 +11,28 @@ const {
 const { setCsrfCookie } = require('../middleware/csrf');
 
 /**
- * Controller Auth — livello sottile tra route e service.
- * NON contiene logica di business: solo estrazione parametri dalla request
- * e formattazione della response.
+ * AuthController — livello sottile tra route e AuthService.
+ * Responsabilità: autenticazione (register, login, logout, refresh,
+ * verify email, resend verification, forgot/reset password, google auth).
+ * NON contiene logica di business.
  */
 
 const clearAuthCookies = (res) => {
   res.clearCookie('access_token');
   res.clearCookie('refresh_token');
   res.clearCookie('csrf_token', { httpOnly: false });
+};
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  res.cookie('access_token', accessToken, {
+    ...baseCookieOptions,
+    maxAge: ACCESS_TOKEN_MAX_AGE,
+  });
+  res.cookie('refresh_token', refreshToken, {
+    ...baseCookieOptions,
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
+  setCsrfCookie(res);
 };
 
 // ─────────────────────────────────────────────
@@ -30,43 +42,25 @@ exports.register = catchAsync(async (req, res) => {
   const { nome, cognome, eta, email, password, classe, lingua } = req.body;
 
   const utente = await authService.registraUtente({
-    nome,
-    cognome,
-    eta,
-    email,
-    password,
-    classe,
-    lingua,
+    nome, cognome, eta, email, password, classe, lingua,
   });
 
   res.status(201).json({
     status: 'success',
     message: 'Registrazione completata. Puoi effettuare il login.',
-    data: {
-      utente: utente.toPublicJSON(),
-    },
+    data: { utente: utente.toPublicJSON() },
   });
 });
 
 // ─────────────────────────────────────────────
 // POST /api/auth/login
 // ─────────────────────────────────────────────
-exports.login = catchAsync(async (req, res, next) => {
+exports.login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 
   const { accessToken, refreshToken } = await authService.loginUtente(email, password);
 
-  res.cookie('access_token', accessToken, {
-    ...baseCookieOptions,
-    maxAge: ACCESS_TOKEN_MAX_AGE,
-  });
-
-  res.cookie('refresh_token', refreshToken, {
-    ...baseCookieOptions,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
-  });
-
-  setCsrfCookie(res);
+  setAuthCookies(res, accessToken, refreshToken);
 
   res.status(200).json({
     status: 'success',
@@ -77,7 +71,7 @@ exports.login = catchAsync(async (req, res, next) => {
 // ─────────────────────────────────────────────
 // POST /api/auth/logout
 // ─────────────────────────────────────────────
-exports.logout = catchAsync(async (req, res, next) => {
+exports.logout = catchAsync(async (req, res) => {
   await authService.logoutUtente(req.user.id);
 
   clearAuthCookies(res);
@@ -92,7 +86,7 @@ exports.logout = catchAsync(async (req, res, next) => {
 // GET /api/auth/me
 // ─────────────────────────────────────────────
 exports.me = catchAsync(async (req, res) => {
-  const { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata } = req.user;
+  const { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata, profilo_completo } = req.user;
 
   // Rinnova il cookie CSRF, così è disponibile dopo un refresh di pagina
   // anche per sessioni preesistenti.
@@ -101,7 +95,7 @@ exports.me = catchAsync(async (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      utente: { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata },
+      utente: { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata, profilo_completo },
     },
   });
 });
@@ -118,23 +112,41 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 
   const tokens = await authService.refreshAccessToken(refreshToken);
 
-  res.cookie('access_token', tokens.accessToken, {
-    ...baseCookieOptions,
-    maxAge: ACCESS_TOKEN_MAX_AGE,
-  });
-
-  res.cookie('refresh_token', tokens.refreshToken, {
-    ...baseCookieOptions,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
-  });
-
-  setCsrfCookie(res);
+  setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
   res.status(200).json({
     status: 'success',
-    data: {
-      accessToken: tokens.accessToken,
-    },
+    data: { accessToken: tokens.accessToken },
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /api/auth/verify-email
+// ─────────────────────────────────────────────
+exports.verifyEmail = catchAsync(async (req, res) => {
+  const { token } = req.body;
+
+  await authService.verificaEmail(token);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Email verificata con successo! Ora puoi effettuare il login.',
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /api/auth/resend-verification
+// Risposta SEMPRE generica (anti user-enumeration).
+// ─────────────────────────────────────────────
+exports.resendVerification = catchAsync(async (req, res) => {
+  const { email } = req.body;
+
+  const risultato = await authService.reinviaVerificaEmail(email);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Se l\'indirizzo è registrato e non ancora verificato, riceverai una nuova email di verifica.',
+    ...(risultato.tokenDebug && { _debug_token: risultato.tokenDebug }),
   });
 });
 
@@ -167,127 +179,24 @@ exports.resetPassword = catchAsync(async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// POST /api/auth/verify-email
+// GET /api/auth/google/callback
+// La GoogleStrategy ha già popolato req.user con i token applicativi.
+// Imposta i cookie e reindirizza al frontend.
 // ─────────────────────────────────────────────
-exports.verifyEmail = catchAsync(async (req, res) => {
-  const { token } = req.body;
+exports.googleCallback = catchAsync(async (req, res) => {
+  const { accessToken, refreshToken } = req.user;
 
-  await authService.verificaEmail(token);
+  setAuthCookies(res, accessToken, refreshToken);
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Email verificata con successo! Ora puoi effettuare il login.',
-  });
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const successPath = process.env.GOOGLE_SUCCESS_REDIRECT || '/dashboard';
+  res.redirect(`${base}${successPath}`);
 });
 
 // ─────────────────────────────────────────────
-// POST /api/auth/request-email-change
+// Reindirizzamento in caso di fallimento OAuth Google
 // ─────────────────────────────────────────────
-exports.requestEmailChange = catchAsync(async (req, res) => {
-  const { nuovaEmail } = req.body;
-  const userId = req.user.id;
-
-  const tokenVerifica = await authService.richiediCambioEmail(userId, nuovaEmail);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Richiesta di cambio email presa in carico. Controlla la tua NUOVA casella postale.',
-    ...(process.env.NODE_ENV !== 'production' && { _debug_token: tokenVerifica }),
-  });
-});
-
-// ─────────────────────────────────────────────
-// POST /api/auth/confirm-email-change
-// ─────────────────────────────────────────────
-exports.confirmEmailChange = catchAsync(async (req, res) => {
-  const { token } = req.body;
-
-  await authService.confermaCambioEmail(token);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Indirizzo email aggiornato con successo.',
-  });
-});
-
-// ─────────────────────────────────────────────
-// DELETE /api/auth/me
-// ─────────────────────────────────────────────
-exports.deleteMe = catchAsync(async (req, res) => {
-  await authService.eliminaAccount(req.user.id);
-
-  clearAuthCookies(res);
-
-  res.status(204).send();
-});
-
-// ─────────────────────────────────────────────
-// GET /api/auth/gestione/utenti (Solo Insegnanti)
-// ─────────────────────────────────────────────
-exports.getAllUsers = catchAsync(async (req, res) => {
-  const { ruolo, classe, nome, page, limit } = req.query;
-
-  const { utenti, paginazione } = await authService.getUtentiPerInsegnante({ ruolo, classe, nome, page, limit });
-
-  res.status(200).json({
-    status: 'success',
-    results: utenti.length,
-    data: {
-      utenti,
-    },
-    ...(paginazione && { paginazione }),
-  });
-});
-
-// ─────────────────────────────────────────────
-// PATCH /api/auth/gestione/utenti/:id/ruolo (Solo Insegnanti)
-// ─────────────────────────────────────────────
-exports.updateUserRole = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const { ruolo } = req.body;
-
-  const utenteAggiornato = await authService.aggiornaRuoloUtente(req.user.id, id, ruolo);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Ruolo dell\'utente aggiornato con successo.',
-    data: {
-      utente: utenteAggiornato,
-    },
-  });
-});
-
-// ─────────────────────────────────────────────
-// DELETE /api/auth/gestione/utenti/:id (Solo Insegnanti)
-// ─────────────────────────────────────────────
-exports.deleteUserByTeacher = catchAsync(async (req, res) => {
-  const { id } = req.params;
-
-  await authService.eliminaUtenteComeInsegnante(req.user.id, id);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'L\'account dell\'utente è stato eliminato definitivamente dall\'insegnante.',
-  });
-});
-
-// ─────────────────────────────────────────────
-// PATCH /api/auth/me/lingua
-// ─────────────────────────────────────────────
-exports.updateLanguage = catchAsync(async (req, res) => {
-  const { lingua } = req.body;
-
-  if (!['it', 'en'].includes(lingua)) {
-    return res.status(400).json({ status: 'fail', message: 'Lingua non supportata.' });
-  }
-
-  const utente = await Utente.findByPk(req.user.id);
-  utente.lingua = lingua;
-  await utente.save();
-
-  res.status(200).json({
-    status: 'success',
-    message: req.t('messages.langChanged'),
-    data: { utente: utente.toPublicJSON() },
-  });
-});
+exports.googleFailure = (req, res) => {
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+  res.redirect(`${base}/login?error=google`);
+};

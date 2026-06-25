@@ -94,10 +94,31 @@ const refreshLimiter = rateLimit({
   },
 });
 
+/**
+ * Limita il re-invio dell'email di verifica: previene email bombing verso
+ * un account non ancora verificato. Limite dedicato e severo (anche perché
+ * la risposta è generica per l'anti user-enumeration).
+ */
+const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 ora
+  max: parseInt(process.env.RESEND_VERIFICATION_RATE_LIMIT_MAX) || 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'fail',
+    code: 'TOO_MANY_REQUESTS',
+    message: 'Troppe richieste di re-invio. Riprova tra un\'ora.',
+  },
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  },
+});
+
 module.exports = {
   globalLimiter,
   loginLimiter,
   forgotPasswordLimiter,
   registerLimiter,
   refreshLimiter,
+  resendVerificationLimiter,
 };

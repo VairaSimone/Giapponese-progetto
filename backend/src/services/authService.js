@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 const Utente = require('../models/Utente');
 const AppError = require('../utils/AppError');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwtHelpers');
@@ -9,10 +9,19 @@ const { hashToken } = require('../utils/tokenHash');
 const logger = require('../utils/logger');
 const emailService = require('./emailService');
 
+/**
+ * AuthService — responsabilità ESCLUSIVA: autenticazione e ciclo di vita
+ * delle credenziali.
+ *
+ *   register · login · logout · refresh · verify email ·
+ *   resend verification · forgot/reset password · google auth
+ *
+ * La gestione utenti (cambio email, eliminazione account, operazioni
+ * amministrative dell'insegnante) è stata spostata in `userService.js`.
+ */
+
 const MAX_TENTATIVI_FALLITI = 5;
 const TEMPO_BLOCCO_MINUTI = 15;
-
-const bcrypt = require('bcryptjs');
 
 // ─────────────────────────────────────────────
 // REGISTRAZIONE
@@ -31,6 +40,7 @@ const registraUtente = async ({ nome, cognome, eta, email, password, classe, lin
     classe,
     lingua,
     email_verificata: false,
+    profilo_completo: true,
     email_verification_token: hashToken(tokenVerifica),
     email_verification_expire: scadenzaVerifica,
   });
@@ -54,6 +64,11 @@ const loginUtente = async (email, password) => {
   if (!utente) {
     await fakeHashCompare();
     throw new AppError('Credenziali non valide', 401, 'INVALID_CREDENTIALS');
+  }
+
+  // Account creato via Google e mai dotato di password locale.
+  if (!utente.password) {
+    throw new AppError('Questo account utilizza l\'accesso con Google.', 401, 'USE_GOOGLE_LOGIN');
   }
 
   if (utente.bloccato_fino_al && new Date(utente.bloccato_fino_al) > new Date()) {
@@ -125,6 +140,7 @@ const fakeHashCompare = async () => {
 
 // ─────────────────────────────────────────────
 // LOGOUT
+// Invalida tutti i refresh/access token incrementando token_version.
 // ─────────────────────────────────────────────
 const logoutUtente = async (userId) => {
   const utente = await Utente.findByPk(userId);
@@ -138,6 +154,9 @@ const logoutUtente = async (userId) => {
 
 // ─────────────────────────────────────────────
 // REFRESH TOKEN
+// Versioning: il payload contiene token_version, verificata in modo STRETTO
+// contro quella persistita. Dopo logout/reset/revoca le versioni divergono
+// e ogni refresh token precedente viene rifiutato.
 // ─────────────────────────────────────────────
 const refreshAccessToken = async (refreshToken) => {
   if (!refreshToken) {
@@ -165,8 +184,8 @@ const refreshAccessToken = async (refreshToken) => {
     throw new AppError('Refresh token non valido o sessione terminata.', 401, 'INVALID_REFRESH_TOKEN');
   }
 
-  if (utente.token_version !== undefined && decoded.token_version !== undefined &&
-      utente.token_version !== decoded.token_version) {
+  // Verifica STRETTA della versione del token (refresh token versioning).
+  if (decoded.token_version !== utente.token_version) {
     throw new AppError('Refresh token non valido o sessione terminata.', 401, 'INVALID_REFRESH_TOKEN');
   }
 
@@ -177,6 +196,78 @@ const refreshAccessToken = async (refreshToken) => {
   await utente.save();
 
   return { accessToken: nuovoAccessToken, refreshToken: nuovoRefreshToken };
+};
+
+// ─────────────────────────────────────────────
+// VERIFICA EMAIL
+// ─────────────────────────────────────────────
+const verificaEmail = async (token) => {
+  const utente = await Utente.findOne({
+    where: {
+      email_verification_token: hashToken(token),
+      nuova_email_pendente: null,
+    },
+  });
+
+  if (!utente) {
+    throw new AppError('Token di verifica non valido o scaduto.', 400, 'INVALID_VERIFICATION_TOKEN');
+  }
+
+  const adesso = new Date();
+  if (utente.email_verification_expire && new Date(utente.email_verification_expire) < adesso) {
+    throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
+  }
+
+  await utente.update({
+    email_verificata: true,
+    email_verification_token: null,
+    email_verification_expire: null,
+  });
+
+  logger.info(`Email verificata con successo per l'utente ID: ${utente.id}`);
+};
+
+// ─────────────────────────────────────────────
+// RE-INVIO EMAIL DI VERIFICA
+// Protezione anti user-enumeration: la risposta al client è SEMPRE generica
+// e con lo stesso status, indipendentemente dall'esistenza dell'account o
+// dal fatto che sia già verificato.
+// ─────────────────────────────────────────────
+const reinviaVerificaEmail = async (email) => {
+  const utente = await Utente.findOne({ where: { email: email.toLowerCase().trim() } });
+
+  // Caso 1: utente inesistente → equalizza il costo computazionale e ritorna
+  // un esito generico (nessuna informazione trapela al chiamante).
+  if (!utente) {
+    crypto.randomBytes(32).toString('hex');
+    logger.info(`Re-invio verifica richiesto per email inesistente: ${email}`);
+    return { inviata: false };
+  }
+
+  // Caso 2: email già verificata → non si re-invia nulla, ma la risposta
+  // esterna resta identica al caso "inviata".
+  if (utente.email_verificata) {
+    logger.info(`Re-invio verifica richiesto per email già verificata: ${utente.id}`);
+    return { inviata: false };
+  }
+
+  // Caso 3: utente esistente e non verificato → genera un nuovo token e
+  // re-invia l'email di verifica.
+  const tokenVerifica = crypto.randomBytes(32).toString('hex');
+  const scadenzaVerifica = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await utente.update({
+    email_verification_token: hashToken(tokenVerifica),
+    email_verification_expire: scadenzaVerifica,
+  });
+
+  try {
+    await emailService.sendVerificationEmail(utente.email, tokenVerifica, utente.lingua);
+  } catch (err) {
+    logger.error(`Errore nel re-invio dell'email di verifica a ${utente.email}: ${err.message}`);
+  }
+
+  return { inviata: true, tokenDebug: process.env.NODE_ENV !== 'production' ? tokenVerifica : undefined };
 };
 
 // ─────────────────────────────────────────────
@@ -237,8 +328,8 @@ const resetPassword = async (token, nuovaPassword) => {
     throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
   }
 
-  // Incrementa token_version per invalidare anche gli access token già
-  // emessi: dopo un reset password nessuna sessione precedente resta valida.
+  // Incrementa token_version per invalidare anche gli access/refresh token
+  // già emessi: dopo un reset password nessuna sessione precedente resta valida.
   await utente.update({
     password: nuovaPassword,
     reset_password_token: null,
@@ -251,238 +342,65 @@ const resetPassword = async (token, nuovaPassword) => {
 };
 
 // ─────────────────────────────────────────────
-// VERIFICA EMAIL
+// GOOGLE OAUTH 2.0
+// Login o registrazione automatica a partire dal profilo Google verificato
+// dalla Passport GoogleStrategy. Restituisce l'utente applicativo.
 // ─────────────────────────────────────────────
-const verificaEmail = async (token) => {
-  const utente = await Utente.findOne({
-    where: {
-      email_verification_token: hashToken(token),
-      nuova_email_pendente: null,
-    },
-  });
+const loginOrRegisterGoogle = async ({ googleId, email, nome, cognome, emailVerificata }) => {
+  const emailNorm = email ? email.toLowerCase().trim() : null;
 
-  if (!utente) {
-    throw new AppError('Token di verifica non valido o scaduto.', 400, 'INVALID_VERIFICATION_TOKEN');
-  }
+  // 1. Account già collegato a questo google_id.
+  let utente = await Utente.findOne({ where: { google_id: googleId } });
 
-  const adesso = new Date();
-  if (utente.email_verification_expire && new Date(utente.email_verification_expire) < adesso) {
-    throw new AppError('Token di verifica scaduto.', 400, 'EXPIRED_VERIFICATION_TOKEN');
-  }
-
-  await utente.update({
-    email_verificata: true,
-    email_verification_token: null,
-    email_verification_expire: null,
-  });
-
-  logger.info(`Email verificata con successo per l'utente ID: ${utente.id}`);
-};
-
-// ─────────────────────────────────────────────
-// RICHIESTA CAMBIO EMAIL
-// ─────────────────────────────────────────────
-const richiediCambioEmail = async (userId, nuovaEmail) => {
-  const emailFormattata = nuovaEmail.toLowerCase().trim();
-
-  const utente = await Utente.findByPk(userId);
-  if (!utente) {
-    throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
-  }
-
-  const giaEsistente = await Utente.findOne({ where: { email: emailFormattata } });
-  if (giaEsistente) {
-    throw new AppError('Questa email è già associata a un altro account.', 409, 'EMAIL_TAKEN');
-  }
-
-  const tokenVerifica = crypto.randomBytes(32).toString('hex');
-  const scadenzaVerifica = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 ore
-
-  await utente.update({
-    email_verification_token: hashToken(tokenVerifica),
-    email_verification_expire: scadenzaVerifica,
-    nuova_email_pendente: emailFormattata,
-  });
-
-  try {
-    await emailService.sendEmailChangeEmail(emailFormattata, tokenVerifica, utente.lingua);
-  } catch (err) {
-    logger.error(`Errore invio email cambio indirizzo a ${emailFormattata}: ${err.message}`);
-  }
-
-  return tokenVerifica;
-};
-
-// ─────────────────────────────────────────────
-// CONFERMA CAMBIO EMAIL
-// ─────────────────────────────────────────────
-const confermaCambioEmail = async (token) => {
-  const utente = await Utente.findOne({
-    where: {
-      email_verification_token: hashToken(token),
-      nuova_email_pendente: { [Op.ne]: null },
-    },
-  });
-
-  if (!utente) {
-    throw new AppError('Token di verifica non valido o non associato a un cambio email.', 400, 'INVALID_TOKEN');
-  }
-
-  if (utente.email_verification_expire && new Date(utente.email_verification_expire) < new Date()) {
-    throw new AppError('Il token di verifica è scaduto. Richiedi un nuovo cambio email.', 400, 'EXPIRED_TOKEN');
-  }
-
-  const nuovaEmail = utente.nuova_email_pendente;
-
-  // Verifica che l'email non sia stata occupata da un altro account nel
-  // frattempo (consistenza dei dati / unique constraint).
-  const giaPreso = await Utente.findOne({ where: { email: nuovaEmail } });
-  if (giaPreso && giaPreso.id !== utente.id) {
-    throw new AppError('Questa email è già associata a un altro account.', 409, 'EMAIL_TAKEN');
-  }
-
-  await utente.update({
-    email: nuovaEmail,
-    nuova_email_pendente: null,
-    email_verification_token: null,
-    email_verification_expire: null,
-  });
-
-  logger.info(`Email aggiornata con successo per utente ID: ${utente.id}`);
-  return utente;
-};
-
-// ─────────────────────────────────────────────
-// ELIMINA ACCOUNT (self)
-// ─────────────────────────────────────────────
-const eliminaAccount = async (userId) => {
-  const utente = await Utente.findByPk(userId);
-  if (!utente) {
-    throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
-  }
-
-  await utente.destroy();
-  logger.info(`Account eliminato definitivamente. ID Utente: ${userId}`);
-};
-
-// ─────────────────────────────────────────────
-// ELIMINA ACCOUNT (azione amministrativa insegnante)
-// ─────────────────────────────────────────────
-const eliminaUtenteComeInsegnante = async (actingUserId, targetUserId) => {
-  if (String(actingUserId) === String(targetUserId)) {
-    throw new AppError(
-      'Non puoi eliminare il tuo account da questa sezione. Usa le impostazioni del profilo.',
-      403,
-      'SELF_DELETE_FORBIDDEN'
-    );
-  }
-
-  const utente = await Utente.findByPk(targetUserId);
-  if (!utente) {
-    throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
-  }
-
-  if (utente.ruolo === 'insegnante') {
-    const totaleInsegnanti = await Utente.count({ where: { ruolo: 'insegnante' } });
-    if (totaleInsegnanti <= 1) {
-      throw new AppError('Impossibile eliminare l\'ultimo insegnante.', 409, 'LAST_TEACHER');
+  // 2. Nessun collegamento: prova ad agganciare un account esistente con la
+  //    stessa email (collegamento account esistente tramite email).
+  if (!utente && emailNorm) {
+    utente = await Utente.findOne({ where: { email: emailNorm } });
+    if (utente) {
+      utente.google_id = googleId;
+      // L'email è verificata da Google: se l'account locale non lo era,
+      // lo diventa ora.
+      if (emailVerificata && !utente.email_verificata) {
+        utente.email_verificata = true;
+      }
+      await utente.save();
+      logger.info(`Account esistente collegato a Google: ${utente.id}`);
     }
   }
 
-  await utente.destroy();
-  logger.info(`[AUDIT] Account ${targetUserId} eliminato dall'insegnante ${actingUserId}`);
-};
-
-// ─────────────────────────────────────────────
-// VISTA GESTIONALE UTENTI (Per Insegnanti)
-// ─────────────────────────────────────────────
-const getUtentiPerInsegnante = async (filtri) => {
-  const { ruolo, classe, nome, page, limit } = filtri;
-  const where = {};
-
-  if (ruolo) {
-    where.ruolo = ruolo;
-  }
-
-  if (classe) {
-    where.classe = classe;
-  }
-
-  if (nome) {
-    where[Op.or] = [
-      { nome: { [Op.like]: `%${nome}%` } },
-      { cognome: { [Op.like]: `%${nome}%` } },
-    ];
-  }
-
-  const pageNum = parseInt(page, 10);
-  const limitNum = parseInt(limit, 10);
-  const usaPaginazione = Number.isInteger(pageNum) && Number.isInteger(limitNum) && pageNum > 0 && limitNum > 0;
-
-  const queryOptions = {
-    where,
-    attributes: {
-      exclude: [
-        'password',
-        'refresh_token',
-        'reset_password_token',
-        'reset_password_expire',
-        'email_verification_token',
-        'email_verification_expire',
-      ],
-    },
-    order: [['cognome', 'ASC'], ['nome', 'ASC']],
-  };
-
-  if (usaPaginazione) {
-    queryOptions.limit = limitNum;
-    queryOptions.offset = (pageNum - 1) * limitNum;
-
-    const { count, rows } = await Utente.findAndCountAll(queryOptions);
-    return {
-      utenti: rows,
-      paginazione: {
-        paginaCorrente: pageNum,
-        elementiPerPagina: limitNum,
-        totaleElementi: count,
-        totalePagine: Math.ceil(count / limitNum),
-      },
-    };
-  }
-
-  const utenti = await Utente.findAll(queryOptions);
-  return { utenti, paginazione: null };
-};
-
-// ─────────────────────────────────────────────
-// CAMBIO RUOLO UTENTE (Per Insegnanti)
-// ─────────────────────────────────────────────
-const aggiornaRuoloUtente = async (actingUserId, userId, nuovoRuolo) => {
-  if (!Utente.RUOLI_VALIDI.includes(nuovoRuolo)) {
-    throw new AppError('Ruolo non valido.', 422, 'INVALID_ROLE');
-  }
-
-  if (String(actingUserId) === String(userId)) {
-    throw new AppError('Non puoi modificare il tuo stesso ruolo.', 403, 'SELF_ROLE_CHANGE_FORBIDDEN');
-  }
-
-  const utente = await Utente.findByPk(userId);
+  // 3. Nessun account: registrazione automatica. Profilo "incompleto"
+  //    (manca età/classe), password locale casuale non utilizzabile.
   if (!utente) {
-    throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
-  }
-
-  // Salvaguardia: non declassare l'ultimo insegnante rimasto.
-  if (utente.ruolo === 'insegnante' && nuovoRuolo !== 'insegnante') {
-    const totaleInsegnanti = await Utente.count({ where: { ruolo: 'insegnante' } });
-    if (totaleInsegnanti <= 1) {
-      throw new AppError('Impossibile declassare l\'ultimo insegnante.', 409, 'LAST_TEACHER');
+    if (!emailNorm) {
+      throw new AppError('Profilo Google senza email: impossibile registrarsi.', 400, 'GOOGLE_NO_EMAIL');
     }
+
+    const passwordCasuale = crypto.randomBytes(32).toString('hex');
+
+    utente = await Utente.create({
+      nome: (nome && nome.trim().length >= 2 ? nome.trim() : 'Utente'),
+      cognome: (cognome && cognome.trim().length >= 2 ? cognome.trim() : 'Google'),
+      email: emailNorm,
+      password: passwordCasuale,
+      ruolo: 'studente',
+      eta: null,
+      classe: null,
+      lingua: 'it',
+      email_verificata: emailVerificata !== false,
+      profilo_completo: false,
+      google_id: googleId,
+    });
+
+    logger.info(`Nuovo utente registrato via Google: ${utente.email} (ID: ${utente.id})`);
   }
 
-  await utente.update({ ruolo: nuovoRuolo });
-  logger.info(`[AUDIT] Ruolo modificato dall'insegnante ${actingUserId}: utente ${userId} -> ${nuovoRuolo}`);
+  const accessToken = generateAccessToken(utente);
+  const refreshToken = generateRefreshToken(utente);
 
-  return utente.toPublicJSON();
+  utente.refresh_token = hashToken(refreshToken);
+  await utente.save();
+
+  return { utente, accessToken, refreshToken };
 };
 
 module.exports = {
@@ -490,13 +408,9 @@ module.exports = {
   loginUtente,
   logoutUtente,
   refreshAccessToken,
+  verificaEmail,
+  reinviaVerificaEmail,
   forgotPassword,
   resetPassword,
-  verificaEmail,
-  richiediCambioEmail,
-  confermaCambioEmail,
-  eliminaAccount,
-  eliminaUtenteComeInsegnante,
-  getUtentiPerInsegnante,
-  aggiornaRuoloUtente,
+  loginOrRegisterGoogle,
 };

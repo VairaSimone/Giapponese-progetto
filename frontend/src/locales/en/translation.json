@@ -118,6 +118,17 @@
       "failEmailTaken": "This email address is now associated with another account.",
       "failGeneric": "The token is invalid or has already been used. Request a new email change from your profile.",
       "backToProfile": "Back to profile"
+    },
+    "orSeparator": "or",
+    "google": {
+      "button": "Continue with Google",
+      "buttonRegister": "Sign up with Google",
+      "error": "Google sign-in failed. Try again or use your email and password."
+    },
+    "resend": {
+      "prompt": "Didn't receive the verification email?",
+      "cta": "Resend verification email",
+      "done": "If the address is registered and not yet verified, you'll receive a new verification email shortly."
     }
   },
   "dashboard": {
@@ -241,7 +252,11 @@
       "SELF_ROLE_CHANGE_FORBIDDEN": "You cannot change your own role.",
       "SELF_DELETE_FORBIDDEN": "You cannot delete your account from this section. Use the profile settings.",
       "PAYLOAD_TOO_LARGE": "The request is too large.",
-      "CORS_ORIGIN_FORBIDDEN": "Origin not allowed."
+      "CORS_ORIGIN_FORBIDDEN": "Origin not allowed.",
+      "GOOGLE_OAUTH_DISABLED": "Google sign-in is currently unavailable.",
+      "USE_GOOGLE_LOGIN": "This account uses Google sign-in. Use the “Continue with Google” button.",
+      "GOOGLE_NO_EMAIL": "The Google profile doesn't expose an email: sign-in cannot be completed.",
+      "INVALID_LANGUAGE": "Unsupported language."
     }
   },
   "validation": {

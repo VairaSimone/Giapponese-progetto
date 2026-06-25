@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "db:migrate": "node src/database/migrate.js"
+    "db:migrate": "node src/database/umzug.js up",
+    "db:migrate:down": "node src/database/umzug.js down",
+    "db:sync": "node src/database/migrate.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -25,7 +27,10 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.10.1",
     "nodemailer": "^9.0.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "sequelize": "^6.37.3",
+    "umzug": "^3.8.3",
     "uuid": "^10.0.0",
     "winston": "^3.13.0"
   },

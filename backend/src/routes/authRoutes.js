@@ -3,49 +3,77 @@
 const express = require('express');
 const router = express.Router();
 
-// Controller
 const authController = require('../controllers/authController');
+const { passport, isGoogleConfigured } = require('../config/passport');
 
-// Middleware
-const { authenticateJWT, authorizeRoles } = require('../middleware/auth');
+const { authenticateJWT } = require('../middleware/auth');
 const {
   loginLimiter,
   forgotPasswordLimiter,
   registerLimiter,
   refreshLimiter,
+  resendVerificationLimiter,
 } = require('../middleware/rateLimiter');
 const { csrfProtection } = require('../middleware/csrf');
 const validate = require('../middleware/validate');
+const AppError = require('../utils/AppError');
 
-// Validatori
 const {
   validateRegistrazione,
   validateLogin,
   validateForgotPassword,
   validateResetPassword,
-  validateChangeEmail,
   validateRefreshToken,
   validateVerifyEmail,
-  validateConfirmEmailChange,
+  validateResendVerification,
 } = require('../validators/authValidators');
 
-// Route pubbliche (non richiedono autenticazione)
+// ─────────────────────────────────────────────
+// Route di AUTENTICAZIONE
+// (register, login, logout, refresh, verify email,
+//  resend verification, reset password, google auth)
+// ─────────────────────────────────────────────
+
+// Pubbliche
 router.post('/register', registerLimiter, validateRegistrazione, validate, authController.register);
 router.post('/login', loginLimiter, validateLogin, validate, authController.login);
 router.post('/refresh-token', refreshLimiter, validateRefreshToken, validate, authController.refreshToken);
 router.post('/forgot-password', forgotPasswordLimiter, validateForgotPassword, validate, authController.forgotPassword);
 router.post('/reset-password', validateResetPassword, validate, authController.resetPassword);
 router.post('/verify-email', validateVerifyEmail, validate, authController.verifyEmail);
-router.post('/confirm-email-change', validateConfirmEmailChange, validate, authController.confirmEmailChange);
+router.post('/resend-verification', resendVerificationLimiter, validateResendVerification, validate, authController.resendVerification);
 
-// Route protette (richiedono access token valido + protezione CSRF per le mutazioni)
+// Protette
 router.post('/logout', authenticateJWT, csrfProtection, authController.logout);
 router.get('/me', authenticateJWT, authController.me);
-router.delete('/me', authenticateJWT, csrfProtection, authController.deleteMe);
-router.post('/request-email-change', authenticateJWT, csrfProtection, validateChangeEmail, validate, authController.requestEmailChange);
-router.patch('/me/lingua', authenticateJWT, csrfProtection, authController.updateLanguage);
-router.get('/gestione/utenti', authenticateJWT, authorizeRoles('insegnante'), authController.getAllUsers);
-router.patch('/gestione/utenti/:id/ruolo', authenticateJWT, csrfProtection, authorizeRoles('insegnante'), authController.updateUserRole);
-router.delete('/gestione/utenti/:id', authenticateJWT, csrfProtection, authorizeRoles('insegnante'), authController.deleteUserByTeacher);
+
+// ─────────────────────────────────────────────
+// GOOGLE OAUTH 2.0
+// Disponibili solo se la strategia è configurata (env presenti).
+// ─────────────────────────────────────────────
+const requireGoogleConfigured = (req, res, next) => {
+  if (!isGoogleConfigured) {
+    return next(new AppError('Login con Google non disponibile.', 503, 'GOOGLE_OAUTH_DISABLED'));
+  }
+  next();
+};
+
+router.get(
+  '/google',
+  requireGoogleConfigured,
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+);
+
+router.get(
+  '/google/callback',
+  requireGoogleConfigured,
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect: '/api/auth/google/failure',
+  }),
+  authController.googleCallback
+);
+
+router.get('/google/failure', authController.googleFailure);
 
 module.exports = router;

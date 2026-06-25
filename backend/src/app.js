@@ -9,6 +9,8 @@ const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const AppError = require('./utils/AppError');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const { passport } = require('./config/passport');
 const cookieParser = require('cookie-parser');
 const app = express();
 
@@ -73,6 +75,11 @@ app.use(express.json({ limit: '10kb' }));        // Limita payload JSON a 10KB
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(i18nMiddleware.handle(i18next));
 app.use(cookieParser());
+
+// ─────────────────────────────────────────────
+// PASSPORT (Google OAuth 2.0) — stateless, nessuna sessione
+// ─────────────────────────────────────────────
+app.use(passport.initialize());
 // ─────────────────────────────────────────────
 // LOGGING HTTP
 // ─────────────────────────────────────────────
@@ -94,6 +101,7 @@ app.get('/api/health', (req, res) => {
 // ROUTE PRINCIPALI
 // ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', userRoutes);
 
 // ─────────────────────────────────────────────
 // GESTIONE ROUTE NON TROVATE (404)
