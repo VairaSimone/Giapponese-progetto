@@ -14,6 +14,31 @@
       content="Piattaforma per studenti e insegnanti di lingua giapponese."
     />
     <title>Piattaforma Giapponese</title>
+    <!--
+      Bootstrap del tema (anti-FOUC): imposta `data-theme` su <html> in modo
+      SINCRONO prima del primo paint, così non c'è alcun lampeggio di tema al
+      caricamento. La logica e la chiave ('app_tema') DEVONO restare allineate
+      a src/store/themeStore.js (THEME_STORAGE_KEY). Consentito dalla CSP
+      (script-src 'unsafe-inline').
+    -->
+    <script>
+      (function () {
+        try {
+          var KEY = 'app_tema';
+          var stored = localStorage.getItem(KEY);
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia &&
+                  window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -17,6 +17,14 @@
     },
     "updated": "Lingua aggiornata con successo."
   },
+  "theme": {
+    "label": "Tema",
+    "light": "Chiaro",
+    "dark": "Scuro",
+    "toggleToDark": "Passa al tema scuro",
+    "toggleToLight": "Passa al tema chiaro",
+    "aria": "Cambia tema"
+  },
   "roles": {
     "studente": "Studente",
     "insegnante": "Insegnante"

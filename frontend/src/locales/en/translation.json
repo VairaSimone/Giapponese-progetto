@@ -17,6 +17,14 @@
     },
     "updated": "Language updated successfully."
   },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "toggleToDark": "Switch to dark theme",
+    "toggleToLight": "Switch to light theme",
+    "aria": "Change theme"
+  },
   "roles": {
     "studente": "Student",
     "insegnante": "Teacher"

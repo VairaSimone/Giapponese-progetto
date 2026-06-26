@@ -11,6 +11,11 @@
   line-height: 1.6;
 }
 
+/*
+ * Le varianti tinte usano `color-mix` sui token cromatici del tema attivo:
+ * così sfondi e bordi si adattano automaticamente a tema chiaro e scuro,
+ * mantenendo un'unica fonte di verità (i token in global.css).
+ */
 .neutral {
   background-color: var(--color-paper-dim);
   color: var(--color-text-muted);
@@ -18,25 +23,25 @@
 }
 
 .seal {
-  background-color: rgba(201, 64, 42, 0.08);
+  background-color: color-mix(in srgb, var(--color-seal) 8%, transparent);
   color: var(--color-seal);
-  border-color: rgba(201, 64, 42, 0.25);
+  border-color: color-mix(in srgb, var(--color-seal) 25%, transparent);
 }
 
 .matcha {
   background-color: var(--color-success-bg);
   color: var(--color-matcha-dark);
-  border-color: rgba(61, 90, 76, 0.25);
+  border-color: color-mix(in srgb, var(--color-matcha) 25%, transparent);
 }
 
 .gold {
-  background-color: rgba(184, 155, 94, 0.12);
-  color: #7a652f;
-  border-color: rgba(184, 155, 94, 0.35);
+  background-color: color-mix(in srgb, var(--color-gold) 12%, transparent);
+  color: var(--color-gold-text);
+  border-color: color-mix(in srgb, var(--color-gold) 35%, transparent);
 }
 
 .danger {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
-  border-color: rgba(179, 38, 30, 0.25);
+  border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
 }

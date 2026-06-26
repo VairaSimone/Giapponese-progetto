@@ -31,12 +31,17 @@ const App = () => {
             fontFamily: 'Inter, sans-serif',
             fontSize: '0.875rem',
             borderRadius: '6px',
+            // Token del tema attivo: i toast seguono Chiaro/Scuro
+            background: 'var(--color-paper)',
+            color: 'var(--color-ink)',
+            border: '1px solid var(--color-border)',
+            boxShadow: 'var(--shadow-elevated)',
           },
           success: {
-            iconTheme: { primary: '#3d5a4c', secondary: '#fdfcf9' },
+            iconTheme: { primary: 'var(--color-matcha)', secondary: 'var(--color-paper)' },
           },
           error: {
-            iconTheme: { primary: '#c9402a', secondary: '#fdfcf9' },
+            iconTheme: { primary: 'var(--color-seal)', secondary: 'var(--color-paper)' },
           },
         }}
       />

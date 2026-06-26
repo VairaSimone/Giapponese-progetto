@@ -1,7 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/*
+ * ──────────────────────────────────────────────────────────────────────────
+ *  Sistema di temi (Chiaro / Scuro)
+ *  --------------------------------------------------------------------------
+ *  - I token NON cromatici (tipografia, spaziatura, raggi) vivono in :root e
+ *    sono condivisi da entrambi i temi.
+ *  - I token CROMATICI sono definiti per il tema chiaro in :root (default) e
+ *    ridefiniti nel blocco [data-theme='dark'].
+ *  - Il tema attivo è pilotato dall'attributo `data-theme` su <html>, impostato
+ *    in modo sincrono PRIMA del primo paint dallo script inline in index.html
+ *    (anti-FOUC) e mantenuto allineato a runtime dallo store Zustand
+ *    (store/themeStore.js) — quindi il cambio avviene senza refresh di pagina.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+
 :root {
-  /* ── Palette ──────────────────────────────────────────── */
+  /* ── Palette — TEMA CHIARO (default) ──────────────────── */
   --color-ink: #1a1a1a; /* sumi — testo principale, quasi nero */
   --color-paper: #fdfcf9; /* washi — sfondo carta */
   --color-paper-dim: #f4f1ea; /* sfondo sezioni secondarie */
@@ -10,6 +25,7 @@
   --color-matcha: #3d5a4c; /* verde matcha — successo, conferme */
   --color-matcha-dark: #2c4337;
   --color-gold: #b89b5e; /* oro tenue — focus, dettagli */
+  --color-gold-text: #7a652f; /* oro leggibile su sfondo chiaro (badge) */
   --color-border: #e3ded2;
   --color-border-strong: #c9c2af;
   --color-text-muted: #6b6558;
@@ -18,6 +34,11 @@
   --color-success-bg: #eaf1ec;
   --color-warning: #9a6a1c;
   --color-warning-bg: #faf1e0;
+  --color-skeleton-highlight: #ece7da; /* riflesso shimmer dello skeleton */
+
+  /* ── Ombre (uso minimo, deliberato) ──────────────────────*/
+  --shadow-card: 0 1px 3px rgba(26, 26, 26, 0.06), 0 1px 2px rgba(26, 26, 26, 0.04);
+  --shadow-elevated: 0 8px 24px rgba(26, 26, 26, 0.12);
 
   /* ── Tipografia ───────────────────────────────────────── */
   --font-display: 'Shippori Mincho', 'Noto Serif JP', serif;
@@ -39,11 +60,47 @@
   --radius-md: 6px;
   --radius-lg: 10px;
 
-  /* ── Ombre (uso minimo, deliberato) ──────────────────────*/
-  --shadow-card: 0 1px 3px rgba(26, 26, 26, 0.06), 0 1px 2px rgba(26, 26, 26, 0.04);
-  --shadow-elevated: 0 8px 24px rgba(26, 26, 26, 0.12);
-
   color-scheme: light;
+}
+
+/*
+ * Ridondante con :root ma esplicito: garantisce i token del tema chiaro anche
+ * quando data-theme è impostato esplicitamente a 'light' dall'utente.
+ */
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+/* ── Palette — TEMA SCURO ──────────────────────────────────
+ * Reinterpretazione "sumi notturno": fondo inchiostro caldo, testo washi
+ * tenue, accenti (hanko/matcha/oro) schiariti per garantire contrasto e
+ * leggibilità (WCAG) su superfici scure. I token strutturali restano invariati.
+ */
+[data-theme='dark'] {
+  --color-ink: #ece7da; /* testo: washi tenue */
+  --color-paper: #16140f; /* sfondo: sumi caldo, quasi nero */
+  --color-paper-dim: #211f18; /* sezioni secondarie */
+  --color-seal: #df6a52; /* hanko schiarito per contrasto su scuro */
+  --color-seal-dark: #ec8068; /* hover/active: più chiaro = più enfasi su scuro */
+  --color-matcha: #6f9a85;
+  --color-matcha-dark: #a7c7b6; /* testo matcha leggibile su success-bg scuro */
+  --color-gold: #cbab6a;
+  --color-gold-text: #d8bd84;
+  --color-border: #2e2b22;
+  --color-border-strong: #463f33;
+  --color-text-muted: #a09a8a;
+  --color-danger: #f08a82;
+  --color-danger-bg: #3a1e1c;
+  --color-success-bg: #1c2a23;
+  --color-warning: #d6a85a;
+  --color-warning-bg: #2e2417;
+  --color-skeleton-highlight: #2c2a22;
+
+  /* Ombre più marcate: su fondo scuro la profondità si percepisce col nero */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
 }
 
 * {
@@ -63,6 +120,10 @@ body {
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* Transizione morbida al cambio tema (disattivata da prefers-reduced-motion) */
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 #root {

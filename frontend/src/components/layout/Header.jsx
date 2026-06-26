@@ -9,6 +9,7 @@ import { useLogout } from '../../hooks/useLogout';
 import { ROUTES } from '../../constants/routes';
 import Button from '../ui/Button';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
+import ThemeToggle from '../ui/ThemeToggle';
 import toast from 'react-hot-toast';
 import styles from './Header.module.css';
 
@@ -60,6 +61,7 @@ const Header = () => {
         )}
 
         <div className={styles.actions}>
+          <ThemeToggle />
           <LanguageSwitcher />
           {isAuthenticated ? (
             <>
