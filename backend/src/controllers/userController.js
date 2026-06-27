@@ -94,7 +94,7 @@ exports.updateUserRole = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { ruolo } = req.body;
 
-  const utenteAggiornato = await userService.aggiornaRuoloUtente(req.user.id, id, ruolo);
+  const utenteAggiornato = await userService.aggiornaRuoloUtente(req.user.id, req.user.ruolo, id, ruolo);
 
   res.status(200).json({
     status: 'success',
@@ -109,7 +109,7 @@ exports.updateUserRole = catchAsync(async (req, res) => {
 exports.deleteUserByTeacher = catchAsync(async (req, res) => {
   const { id } = req.params;
 
-  await userService.eliminaUtenteComeInsegnante(req.user.id, id);
+  await userService.eliminaUtenteComeInsegnante(req.user.id, req.user.ruolo, id);
 
   res.status(200).json({
     status: 'success',

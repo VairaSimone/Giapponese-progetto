@@ -36,19 +36,57 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 };
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register
+// POST /api/auth/register-student
+// Completamento registrazione studente tramite token di invito.
+// Email e classe sono ereditate dall'invito; l'utente invia solo
+// nome, cognome, età e password.
 // ─────────────────────────────────────────────
-exports.register = catchAsync(async (req, res) => {
-  const { nome, cognome, eta, email, password, classe, lingua } = req.body;
+exports.registerStudent = catchAsync(async (req, res) => {
+  const { token, nome, cognome, eta, password } = req.body;
 
-  const utente = await authService.registraUtente({
-    nome, cognome, eta, email, password, classe, lingua,
+  const utente = await authService.registraStudenteDaInvito({
+    token, nome, cognome, eta, password,
   });
 
   res.status(201).json({
     status: 'success',
-    message: 'Registrazione completata. Puoi effettuare il login.',
+    message: 'Registrazione completata. Ora puoi effettuare il login.',
     data: { utente: utente.toPublicJSON() },
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /api/auth/register-teacher
+// Completamento registrazione insegnante tramite token di invito creato
+// da un admin (onboarding diretto). Nessuna classe.
+// ─────────────────────────────────────────────
+exports.registerTeacher = catchAsync(async (req, res) => {
+  const { token, nome, cognome, password } = req.body;
+
+  const utente = await authService.registraInsegnanteDaInvito({
+    token, nome, cognome, password,
+  });
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Registrazione completata. Ora puoi effettuare il login.',
+    data: { utente: utente.toPublicJSON() },
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /api/auth/teacher-request
+// Candidatura insegnante (self-service). L'account resta 'in_attesa'
+// finché un admin non lo approva: NON può effettuare il login.
+// ─────────────────────────────────────────────
+exports.teacherRequest = catchAsync(async (req, res) => {
+  const { nome, cognome, email, password, motivazione } = req.body;
+
+  await authService.richiestaInsegnante({ nome, cognome, email, password, motivazione });
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Candidatura inviata. Riceverai una notifica via email una volta approvata da un amministratore.',
   });
 });
 
@@ -86,7 +124,7 @@ exports.logout = catchAsync(async (req, res) => {
 // GET /api/auth/me
 // ─────────────────────────────────────────────
 exports.me = catchAsync(async (req, res) => {
-  const { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata, profilo_completo } = req.user;
+  const { id, nome, cognome, eta, email, ruolo, classe, stato, lingua, email_verificata, profilo_completo } = req.user;
 
   // Rinnova il cookie CSRF, così è disponibile dopo un refresh di pagina
   // anche per sessioni preesistenti.
@@ -95,7 +133,7 @@ exports.me = catchAsync(async (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      utente: { id, nome, cognome, eta, email, ruolo, classe, lingua, email_verificata, profilo_completo },
+      utente: { id, nome, cognome, eta, email, ruolo, classe, stato, lingua, email_verificata, profilo_completo },
     },
   });
 });

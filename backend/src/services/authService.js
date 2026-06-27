@@ -2,7 +2,10 @@
 
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 const Utente = require('../models/Utente');
+const Invito = require('../models/Invito');
 const AppError = require('../utils/AppError');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwtHelpers');
 const { hashToken } = require('../utils/tokenHash');
@@ -24,34 +27,161 @@ const MAX_TENTATIVI_FALLITI = 5;
 const TEMPO_BLOCCO_MINUTI = 15;
 
 // ─────────────────────────────────────────────
-// REGISTRAZIONE
+// CONSUMO INVITO — helper condiviso
+// Carica e blocca l'invito, ne valida lo stato/scadenza/ruolo e verifica che
+// l'email non sia stata occupata nel frattempo. Restituisce l'invito bloccato
+// all'interno della transazione del chiamante.
 // ─────────────────────────────────────────────
-const registraUtente = async ({ nome, cognome, eta, email, password, classe, lingua = 'it' }) => {
-  const tokenVerifica = crypto.randomBytes(32).toString('hex');
-  const scadenzaVerifica = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ore di validità
+const caricaInvitoValido = async (tokenInChiaro, ruoloAtteso, t) => {
+  const invito = await Invito.findOne({
+    where: { token_hash: hashToken(tokenInChiaro) },
+    transaction: t,
+    lock: t.LOCK.UPDATE,
+  });
+
+  if (!invito || invito.stato === 'revocato') {
+    throw new AppError('Invito non valido o revocato.', 400, 'INVALID_INVITE');
+  }
+  if (invito.stato === 'completato') {
+    throw new AppError('Questo invito è già stato utilizzato.', 410, 'INVITE_ALREADY_USED');
+  }
+  if (new Date(invito.scadenza) <= new Date()) {
+    throw new AppError('Invito scaduto. Richiedine uno nuovo.', 410, 'INVITE_EXPIRED');
+  }
+  if (invito.ruolo !== ruoloAtteso) {
+    throw new AppError('Invito non valido per questo tipo di registrazione.', 400, 'INVITE_ROLE_MISMATCH');
+  }
+
+  const giaRegistrato = await Utente.findOne({
+    where: { email: invito.email },
+    transaction: t,
+  });
+  if (giaRegistrato) {
+    throw new AppError('Esiste già un account con questa email.', 409, 'EMAIL_ALREADY_REGISTERED');
+  }
+
+  return invito;
+};
+
+// ─────────────────────────────────────────────
+// REGISTRAZIONE STUDENTE SU INVITO
+// L'email e la classe sono EREDITATE dall'invito creato dall'insegnante:
+// l'utente fornisce solo nome, cognome, età e password. L'account nasce
+// già attivo e con email verificata (il possesso del link prova il controllo
+// della casella).
+// ─────────────────────────────────────────────
+const registraStudenteDaInvito = async ({ token, nome, cognome, eta, password }) => {
+  return sequelize.transaction(async (t) => {
+    const invito = await caricaInvitoValido(token, 'studente', t);
+
+    const nuovoUtente = await Utente.create(
+      {
+        nome: nome.trim(),
+        cognome: cognome.trim(),
+        eta,
+        email: invito.email,
+        password,
+        ruolo: 'studente',
+        classe: invito.classe, // ereditata dall'invito, non sovrascrivibile
+        stato: 'attivo',
+        lingua: 'it',
+        email_verificata: true,
+        profilo_completo: true,
+      },
+      { transaction: t }
+    );
+
+    await invito.update(
+      { stato: 'completato', utente_creato_id: nuovoUtente.id },
+      { transaction: t }
+    );
+
+    logger.info(`[INVITO] Studente registrato da invito: ${nuovoUtente.email} (classe ${invito.classe})`);
+    return nuovoUtente;
+  });
+};
+
+// ─────────────────────────────────────────────
+// REGISTRAZIONE INSEGNANTE SU INVITO (onboarding diretto dell'admin)
+// L'insegnante non inserisce alcuna classe. Account già attivo: l'admin che
+// ha generato l'invito funge da approvazione.
+// ─────────────────────────────────────────────
+const registraInsegnanteDaInvito = async ({ token, nome, cognome, password }) => {
+  return sequelize.transaction(async (t) => {
+    const invito = await caricaInvitoValido(token, 'insegnante', t);
+
+    const nuovoUtente = await Utente.create(
+      {
+        nome: nome.trim(),
+        cognome: cognome.trim(),
+        eta: null,
+        email: invito.email,
+        password,
+        ruolo: 'insegnante',
+        classe: null,
+        stato: 'attivo',
+        lingua: 'it',
+        email_verificata: true,
+        profilo_completo: true,
+      },
+      { transaction: t }
+    );
+
+    await invito.update(
+      { stato: 'completato', utente_creato_id: nuovoUtente.id },
+      { transaction: t }
+    );
+
+    logger.info(`[INVITO] Insegnante registrato da invito: ${nuovoUtente.email}`);
+    return nuovoUtente;
+  });
+};
+
+// ─────────────────────────────────────────────
+// CANDIDATURA INSEGNANTE (self-service, soggetta ad approvazione admin)
+// Crea un account insegnante in stato 'in_attesa': NON può autenticarsi
+// finché un admin non lo approva. L'insegnante non inserisce alcuna classe.
+// ─────────────────────────────────────────────
+const richiestaInsegnante = async ({ nome, cognome, email, password, motivazione }) => {
+  const emailNorm = email.toLowerCase().trim();
+
+  const esistente = await Utente.findOne({ where: { email: emailNorm } });
+  if (esistente) {
+    throw new AppError('Esiste già un account con questa email.', 409, 'EMAIL_ALREADY_REGISTERED');
+  }
 
   const nuovoUtente = await Utente.create({
     nome: nome.trim(),
     cognome: cognome.trim(),
-    eta,
-    email: email.toLowerCase().trim(),
+    eta: null,
+    email: emailNorm,
     password,
-    ruolo: 'studente',
-    classe,
-    lingua,
+    ruolo: 'insegnante',
+    classe: null,
+    stato: 'in_attesa',
+    lingua: 'it',
     email_verificata: false,
     profilo_completo: true,
-    email_verification_token: hashToken(tokenVerifica),
-    email_verification_expire: scadenzaVerifica,
+    nota_candidatura: motivazione ? String(motivazione).trim() : null,
   });
 
+  // Notifica agli admin (best-effort).
   try {
-    await emailService.sendVerificationEmail(nuovoUtente.email, tokenVerifica, nuovoUtente.lingua);
+    const admin = await Utente.findAll({ where: { ruolo: 'admin', stato: 'attivo' }, attributes: ['email', 'lingua'] });
+    await Promise.all(
+      admin.map((a) =>
+        emailService.sendNuovaCandidaturaAdminEmail(a.email, {
+          nome: nuovoUtente.nome,
+          cognome: nuovoUtente.cognome,
+          email: nuovoUtente.email,
+        }, a.lingua)
+      )
+    );
   } catch (err) {
-    logger.error(`Errore nell'invio dell'email di verifica a ${nuovoUtente.email}: ${err.message}`);
+    logger.error(`Errore notifica admin nuova candidatura insegnante: ${err.message}`);
   }
 
-  logger.info(`Nuovo utente registrato: ${nuovoUtente.email} (ID: ${nuovoUtente.id})`);
+  logger.info(`[CANDIDATURA] Nuova candidatura insegnante in attesa: ${nuovoUtente.email}`);
   return nuovoUtente;
 };
 
@@ -119,6 +249,28 @@ const loginUtente = async (email, password) => {
       'Email non verificata. Controlla la tua casella di posta.',
       401,
       'EMAIL_NOT_VERIFIED'
+    );
+  }
+
+  // Gate sullo stato account: solo gli account 'attivo' possono autenticarsi.
+  // Un insegnante in attesa di approvazione (o rifiutato) viene bloccato qui,
+  // DOPO la verifica della password (così non si rivela l'esistenza del blocco
+  // a chi non conosce le credenziali).
+  if (utente.stato !== 'attivo') {
+    if (utente.changed()) {
+      await utente.save();
+    }
+    if (utente.stato === 'in_attesa') {
+      throw new AppError(
+        'Il tuo account è in attesa di approvazione da parte di un amministratore.',
+        403,
+        'ACCOUNT_PENDING'
+      );
+    }
+    throw new AppError(
+      'Questo account non è abilitato ad accedere. Contatta un amministratore.',
+      403,
+      'ACCOUNT_NOT_ACTIVE'
     );
   }
 
@@ -342,24 +494,25 @@ const resetPassword = async (token, nuovaPassword) => {
 };
 
 // ─────────────────────────────────────────────
-// GOOGLE OAUTH 2.0
-// Login o registrazione automatica a partire dal profilo Google verificato
-// dalla Passport GoogleStrategy. Restituisce l'utente applicativo.
+// GOOGLE OAUTH 2.0 — SOLO LOGIN / COLLEGAMENTO (no auto-registrazione)
+// In un sistema ad inviti rigido, Google NON può creare nuovi account: lo
+// farebbe scavalcando l'invito. Quindi:
+//   1. account già collegato al google_id  → login;
+//   2. account locale con la stessa email   → collega il google_id e login;
+//   3. nessun account                        → ERRORE (niente registrazione).
+// In tutti i casi viene applicato il gate sullo stato ('attivo').
 // ─────────────────────────────────────────────
-const loginOrRegisterGoogle = async ({ googleId, email, nome, cognome, emailVerificata }) => {
+const loginOrLinkGoogle = async ({ googleId, email, emailVerificata }) => {
   const emailNorm = email ? email.toLowerCase().trim() : null;
 
   // 1. Account già collegato a questo google_id.
   let utente = await Utente.findOne({ where: { google_id: googleId } });
 
-  // 2. Nessun collegamento: prova ad agganciare un account esistente con la
-  //    stessa email (collegamento account esistente tramite email).
+  // 2. Nessun collegamento: aggancia un account ESISTENTE con la stessa email.
   if (!utente && emailNorm) {
     utente = await Utente.findOne({ where: { email: emailNorm } });
     if (utente) {
       utente.google_id = googleId;
-      // L'email è verificata da Google: se l'account locale non lo era,
-      // lo diventa ora.
       if (emailVerificata && !utente.email_verificata) {
         utente.email_verificata = true;
       }
@@ -368,30 +521,19 @@ const loginOrRegisterGoogle = async ({ googleId, email, nome, cognome, emailVeri
     }
   }
 
-  // 3. Nessun account: registrazione automatica. Profilo "incompleto"
-  //    (manca età/classe), password locale casuale non utilizzabile.
+  // 3. Nessun account: in modalità invito-only NON si crea nulla.
   if (!utente) {
-    if (!emailNorm) {
-      throw new AppError('Profilo Google senza email: impossibile registrarsi.', 400, 'GOOGLE_NO_EMAIL');
-    }
+    throw new AppError(
+      "Accesso non consentito: nessun account associato a questo indirizzo Google. L'accesso è riservato agli utenti invitati.",
+      403,
+      'GOOGLE_NO_ACCOUNT'
+    );
+  }
 
-    const passwordCasuale = crypto.randomBytes(32).toString('hex');
-
-    utente = await Utente.create({
-      nome: (nome && nome.trim().length >= 2 ? nome.trim() : 'Utente'),
-      cognome: (cognome && cognome.trim().length >= 2 ? cognome.trim() : 'Google'),
-      email: emailNorm,
-      password: passwordCasuale,
-      ruolo: 'studente',
-      eta: null,
-      classe: null,
-      lingua: 'it',
-      email_verificata: emailVerificata !== false,
-      profilo_completo: false,
-      google_id: googleId,
-    });
-
-    logger.info(`Nuovo utente registrato via Google: ${utente.email} (ID: ${utente.id})`);
+  // Gate sullo stato: un insegnante in attesa/rifiutato non entra via Google.
+  if (utente.stato !== 'attivo') {
+    const code = utente.stato === 'in_attesa' ? 'ACCOUNT_PENDING' : 'ACCOUNT_NOT_ACTIVE';
+    throw new AppError('Account non abilitato ad accedere.', 403, code);
   }
 
   const accessToken = generateAccessToken(utente);
@@ -404,7 +546,9 @@ const loginOrRegisterGoogle = async ({ googleId, email, nome, cognome, emailVeri
 };
 
 module.exports = {
-  registraUtente,
+  registraStudenteDaInvito,
+  registraInsegnanteDaInvito,
+  richiestaInsegnante,
   loginUtente,
   logoutUtente,
   refreshAccessToken,
@@ -412,5 +556,5 @@ module.exports = {
   reinviaVerificaEmail,
   forgotPassword,
   resetPassword,
-  loginOrRegisterGoogle,
+  loginOrLinkGoogle,
 };

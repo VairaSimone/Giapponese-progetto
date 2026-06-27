@@ -43,6 +43,12 @@ const authenticateJWT = catchAsync(async (req, res, next) => {
     return next(new AppError('Account temporaneamente bloccato. Riprova più tardi.', 403, 'ACCOUNT_LOCKED'));
   }
 
+  // Difesa in profondità: un account non più 'attivo' (insegnante sospeso/
+  // rifiutato dopo l'emissione di un token) non può usare sessioni esistenti.
+  if (utente.stato !== 'attivo') {
+    return next(new AppError('Account non abilitato ad accedere.', 403, 'ACCOUNT_NOT_ACTIVE'));
+  }
+
   req.user = {
     id: utente.id,
     nome: utente.nome,
@@ -51,6 +57,7 @@ const authenticateJWT = catchAsync(async (req, res, next) => {
     email: utente.email,
     ruolo: utente.ruolo,
     classe: utente.classe,
+    stato: utente.stato,
     lingua: utente.lingua,
     email_verificata: utente.email_verificata,
   };

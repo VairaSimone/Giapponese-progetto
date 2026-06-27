@@ -6,7 +6,8 @@ const sequelize = require('../config/database');
 
 // Valori ammessi per la classe: immutabili e condivisi con i validator
 const CLASSI_VALIDE = ['Prima', 'Seconda', 'Terza', 'Quarta', 'Quinta'];
-const RUOLI_VALIDI = ['studente', 'insegnante'];
+const RUOLI_VALIDI = ['studente', 'insegnante', 'admin'];
+const STATI_VALIDI = ['attivo', 'in_attesa', 'rifiutato'];
 const LINGUE_VALIDE = ['it', 'en'];
 class Utente extends Model {
   /**
@@ -30,6 +31,7 @@ class Utente extends Model {
       email: this.email,
       ruolo: this.ruolo,
       classe: this.classe,
+      stato: this.stato,
       lingua: this.lingua,
       email_verificata: this.email_verificata,
       profilo_completo: this.profilo_completo,
@@ -109,6 +111,33 @@ Utente.init(
           msg: `Il ruolo deve essere uno di: ${RUOLI_VALIDI.join(', ')}`,
         },
       },
+    },
+
+    // Stato dell'account: governa il ciclo di vita e l'approvazione.
+    //   - 'attivo'     → l'account può autenticarsi normalmente;
+    //   - 'in_attesa'  → candidatura insegnante NON ancora approvata: login negato;
+    //   - 'rifiutato'  → candidatura respinta da un admin: login negato.
+    // Gli studenti creati su invito e gli insegnanti creati/approvati dall'admin
+    // nascono già 'attivo'.
+    stato: {
+      type: DataTypes.ENUM(...STATI_VALIDI),
+      allowNull: false,
+      defaultValue: 'attivo',
+      validate: {
+        isIn: {
+          args: [STATI_VALIDI],
+          msg: `Lo stato deve essere uno di: ${STATI_VALIDI.join(', ')}`,
+        },
+      },
+    },
+
+    // Messaggio facoltativo allegato alla candidatura insegnante, mostrato
+    // all'admin nel pannello di approvazione.
+    nota_candidatura: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+      field: 'nota_candidatura',
     },
 
     classe: {
@@ -231,6 +260,7 @@ Utente.init(
       { fields: ['reset_password_token'] },
       { fields: ['email_verification_token'] },
       { fields: ['ruolo'] },
+      { fields: ['stato'] },
       // Indice sul refresh token: elimina il full table scan durante il
       // lookup eseguito ad ogni refresh della sessione.
       { fields: ['refresh_token'] },
@@ -257,5 +287,6 @@ Utente.init(
 
 Utente.CLASSI_VALIDE = CLASSI_VALIDE;
 Utente.RUOLI_VALIDI = RUOLI_VALIDI;
+Utente.STATI_VALIDI = STATI_VALIDI;
 
 module.exports = Utente;

@@ -10,6 +10,8 @@ const { globalLimiter } = require('./middleware/rateLimiter');
 const AppError = require('./utils/AppError');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const inviteRoutes = require('./routes/inviteRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const { passport } = require('./config/passport');
 const cookieParser = require('cookie-parser');
 const app = express();
@@ -102,6 +104,8 @@ app.get('/api/health', (req, res) => {
 // ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', userRoutes);
+app.use('/api/invites', inviteRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ─────────────────────────────────────────────
 // GESTIONE ROUTE NON TROVATE (404)

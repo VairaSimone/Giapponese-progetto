@@ -195,7 +195,7 @@ const getUtentiPerInsegnante = async (filtri) => {
 // Incrementa inoltre token_version del bersaglio (revoca sessioni) così che
 // il nuovo ruolo abbia effetto immediato.
 // ─────────────────────────────────────────────
-const aggiornaRuoloUtente = async (actingUserId, userId, nuovoRuolo) => {
+const aggiornaRuoloUtente = async (actingUserId, actingRole, userId, nuovoRuolo) => {
   if (!Utente.RUOLI_VALIDI.includes(nuovoRuolo)) {
     throw new AppError('Ruolo non valido.', 422, 'INVALID_ROLE');
   }
@@ -204,10 +204,34 @@ const aggiornaRuoloUtente = async (actingUserId, userId, nuovoRuolo) => {
     throw new AppError('Non puoi modificare il tuo stesso ruolo.', 403, 'SELF_ROLE_CHANGE_FORBIDDEN');
   }
 
+  // Solo un admin può assegnare (o revocare) il ruolo admin: impedisce a un
+  // insegnante di promuovere se stesso o altri ad amministratore.
+  if (nuovoRuolo === 'admin' && actingRole !== 'admin') {
+    throw new AppError('Solo un amministratore può assegnare il ruolo admin.', 403, 'ADMIN_ROLE_FORBIDDEN');
+  }
+
   return sequelize.transaction(async (t) => {
     const utente = await Utente.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
     if (!utente) {
       throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
+    }
+
+    // Solo un admin può declassare un altro admin.
+    if (utente.ruolo === 'admin' && actingRole !== 'admin') {
+      throw new AppError('Solo un amministratore può modificare un account admin.', 403, 'ADMIN_ROLE_FORBIDDEN');
+    }
+
+    // Salvaguardia atomica: non declassare l'ultimo admin rimasto.
+    if (utente.ruolo === 'admin' && nuovoRuolo !== 'admin') {
+      const admin = await Utente.findAll({
+        where: { ruolo: 'admin' },
+        attributes: ['id'],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (admin.length <= 1) {
+        throw new AppError('Impossibile declassare l\'ultimo amministratore.', 409, 'LAST_ADMIN');
+      }
     }
 
     // Salvaguardia atomica: non declassare l'ultimo insegnante rimasto.
@@ -249,7 +273,7 @@ const aggiornaRuoloUtente = async (actingUserId, userId, nuovoRuolo) => {
 // Eseguito in TRANSAZIONE con lock di riga per garantire l'atomicità del
 // controllo "ultimo insegnante".
 // ─────────────────────────────────────────────
-const eliminaUtenteComeInsegnante = async (actingUserId, targetUserId) => {
+const eliminaUtenteComeInsegnante = async (actingUserId, actingRole, targetUserId) => {
   if (String(actingUserId) === String(targetUserId)) {
     throw new AppError(
       'Non puoi eliminare il tuo account da questa sezione. Usa le impostazioni del profilo.',
@@ -262,6 +286,24 @@ const eliminaUtenteComeInsegnante = async (actingUserId, targetUserId) => {
     const utente = await Utente.findByPk(targetUserId, { transaction: t, lock: t.LOCK.UPDATE });
     if (!utente) {
       throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
+    }
+
+    // Solo un admin può eliminare un altro admin.
+    if (utente.ruolo === 'admin' && actingRole !== 'admin') {
+      throw new AppError('Solo un amministratore può eliminare un account admin.', 403, 'ADMIN_ROLE_FORBIDDEN');
+    }
+
+    // Salvaguardia atomica: non eliminare l'ultimo admin rimasto.
+    if (utente.ruolo === 'admin') {
+      const admin = await Utente.findAll({
+        where: { ruolo: 'admin' },
+        attributes: ['id'],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (admin.length <= 1) {
+        throw new AppError('Impossibile eliminare l\'ultimo amministratore.', 409, 'LAST_ADMIN');
+      }
     }
 
     if (utente.ruolo === 'insegnante') {
@@ -278,7 +320,7 @@ const eliminaUtenteComeInsegnante = async (actingUserId, targetUserId) => {
     }
 
     await utente.destroy({ transaction: t });
-    logger.info(`[AUDIT] Account ${targetUserId} eliminato dall'insegnante ${actingUserId}`);
+    logger.info(`[AUDIT] Account ${targetUserId} eliminato dall'utente ${actingUserId}`);
   });
 };
 

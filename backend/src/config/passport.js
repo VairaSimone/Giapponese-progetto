@@ -40,11 +40,9 @@ if (isGoogleConfigured) {
             profile.emails && profile.emails[0] ? profile.emails[0].verified !== false : false;
 
           const { utente, accessToken: appAccess, refreshToken: appRefresh } =
-            await authService.loginOrRegisterGoogle({
+            await authService.loginOrLinkGoogle({
               googleId: profile.id,
               email,
-              nome: profile.name && profile.name.givenName,
-              cognome: profile.name && profile.name.familyName,
               emailVerificata,
             });
 

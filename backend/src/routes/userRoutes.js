@@ -30,9 +30,9 @@ router.post('/request-email-change', authenticateJWT, csrfProtection, validateCh
 router.patch('/me/lingua', authenticateJWT, csrfProtection, userController.updateLanguage);
 router.delete('/me', authenticateJWT, csrfProtection, userController.deleteMe);
 
-// Operazioni amministrative (solo insegnanti)
-router.get('/gestione/utenti', authenticateJWT, authorizeRoles('insegnante'), userController.getAllUsers);
-router.patch('/gestione/utenti/:id/ruolo', authenticateJWT, csrfProtection, authorizeRoles('insegnante'), userController.updateUserRole);
-router.delete('/gestione/utenti/:id', authenticateJWT, csrfProtection, authorizeRoles('insegnante'), userController.deleteUserByTeacher);
+// Operazioni amministrative (insegnanti e admin)
+router.get('/gestione/utenti', authenticateJWT, authorizeRoles('insegnante', 'admin'), userController.getAllUsers);
+router.patch('/gestione/utenti/:id/ruolo', authenticateJWT, csrfProtection, authorizeRoles('insegnante', 'admin'), userController.updateUserRole);
+router.delete('/gestione/utenti/:id', authenticateJWT, csrfProtection, authorizeRoles('insegnante', 'admin'), userController.deleteUserByTeacher);
 
 module.exports = router;

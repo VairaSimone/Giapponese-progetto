@@ -13,13 +13,16 @@ const {
   registerLimiter,
   refreshLimiter,
   resendVerificationLimiter,
+  teacherRequestLimiter,
 } = require('../middleware/rateLimiter');
 const { csrfProtection } = require('../middleware/csrf');
 const validate = require('../middleware/validate');
 const AppError = require('../utils/AppError');
 
 const {
-  validateRegistrazione,
+  validateRegisterStudent,
+  validateRegisterTeacher,
+  validateTeacherRequest,
   validateLogin,
   validateForgotPassword,
   validateResetPassword,
@@ -30,12 +33,17 @@ const {
 
 // ─────────────────────────────────────────────
 // Route di AUTENTICAZIONE
-// (register, login, logout, refresh, verify email,
-//  resend verification, reset password, google auth)
+// La registrazione pubblica libera è stata RIMOSSA: gli studenti si
+// registrano solo tramite invito, gli insegnanti tramite candidatura
+// (approvazione admin) o invito diretto dell'admin.
 // ─────────────────────────────────────────────
 
+// Registrazione su invito / candidatura (pubbliche ma "gated")
+router.post('/register-student', registerLimiter, validateRegisterStudent, validate, authController.registerStudent);
+router.post('/register-teacher', registerLimiter, validateRegisterTeacher, validate, authController.registerTeacher);
+router.post('/teacher-request', teacherRequestLimiter, validateTeacherRequest, validate, authController.teacherRequest);
+
 // Pubbliche
-router.post('/register', registerLimiter, validateRegistrazione, validate, authController.register);
 router.post('/login', loginLimiter, validateLogin, validate, authController.login);
 router.post('/refresh-token', refreshLimiter, validateRefreshToken, validate, authController.refreshToken);
 router.post('/forgot-password', forgotPasswordLimiter, validateForgotPassword, validate, authController.forgotPassword);

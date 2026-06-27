@@ -114,6 +114,45 @@ const resendVerificationLimiter = rateLimit({
   },
 });
 
+/**
+ * Limita la creazione di inviti da parte di insegnanti/admin: previene
+ * l'invio massivo di email di invito (email bombing) tramite un account
+ * autenticato compromesso o abusato.
+ */
+const inviteLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 ora
+  max: parseInt(process.env.INVITE_RATE_LIMIT_MAX) || 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'fail',
+    code: 'TOO_MANY_REQUESTS',
+    message: 'Troppi inviti inviati. Riprova più tardi.',
+  },
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  },
+});
+
+/**
+ * Limita le candidature insegnante (endpoint pubblico): previene lo spam di
+ * account in attesa e l'email bombing verso gli admin.
+ */
+const teacherRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 ora
+  max: parseInt(process.env.TEACHER_REQUEST_RATE_LIMIT_MAX) || 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'fail',
+    code: 'TOO_MANY_REQUESTS',
+    message: 'Troppe candidature da questo indirizzo. Riprova più tardi.',
+  },
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  },
+});
+
 module.exports = {
   globalLimiter,
   loginLimiter,
@@ -121,4 +160,6 @@ module.exports = {
   registerLimiter,
   refreshLimiter,
   resendVerificationLimiter,
+  inviteLimiter,
+  teacherRequestLimiter,
 };

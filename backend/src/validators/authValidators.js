@@ -1,5 +1,5 @@
 'use strict';
-const { cookie } = require('express-validator');
+const { cookie, param } = require('express-validator');
 const { body } = require('express-validator');
 const Utente = require('../models/Utente');
 
@@ -18,6 +18,19 @@ const passwordRules = (fieldName = 'password') =>
       'La password deve contenere almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale'
     );
 
+const nomeRules = (fieldName = 'nome', label = 'Il nome') =>
+  body(fieldName)
+    .trim()
+    .notEmpty().withMessage(`${label} è obbligatorio`)
+    .isLength({ min: 2, max: 100 }).withMessage(`${label} deve avere tra 2 e 100 caratteri`)
+    .matches(nameRegex).withMessage(`${label} contiene caratteri non validi`);
+
+const etaRules = (fieldName = 'eta') =>
+  body(fieldName)
+    .notEmpty().withMessage("L'età è obbligatoria")
+    .isInt({ min: 14, max: 99 }).withMessage("L'età deve essere un numero intero tra 14 e 99")
+    .toInt();
+
 const emailRules = (fieldName = 'email') =>
   body(fieldName)
     .trim()
@@ -34,41 +47,88 @@ const tokenRules = (fieldName = 'token', message = 'Token non valido') =>
     .isLength({ min: 64, max: 64 }).withMessage(message);
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register
+// POST /api/invites/student  (insegnante / admin)
 // ─────────────────────────────────────────────
-const validateRegistrazione = [
-  body('nome')
-    .trim()
-    .notEmpty().withMessage('Il nome è obbligatorio')
-    .isLength({ min: 2, max: 100 }).withMessage('Il nome deve avere tra 2 e 100 caratteri')
-    .matches(nameRegex).withMessage('Il nome contiene caratteri non validi'),
-
-  body('cognome')
-    .trim()
-    .notEmpty().withMessage('Il cognome è obbligatorio')
-    .isLength({ min: 2, max: 100 }).withMessage('Il cognome deve avere tra 2 e 100 caratteri')
-    .matches(nameRegex).withMessage('Il cognome contiene caratteri non validi'),
-
-  body('eta')
-    .notEmpty().withMessage("L'età è obbligatoria")
-    .isInt({ min: 14, max: 99 }).withMessage("L'età deve essere un numero intero tra 14 e 99")
-    .toInt(),
-
+const validateInvitoStudente = [
   emailRules('email'),
-
-  passwordRules('password'),
-
   body('classe')
     .trim()
     .notEmpty().withMessage('La classe è obbligatoria')
     .isIn(Utente.CLASSI_VALIDE)
     .withMessage(`La classe deve essere una di: ${Utente.CLASSI_VALIDE.join(', ')}`),
+];
 
-  
-  body('lingua')
-    .optional()
-    .isIn(['it', 'en'])
-    .withMessage('La lingua deve essere una di: it, en'),
+// ─────────────────────────────────────────────
+// POST /api/invites/teacher  (admin)
+// ─────────────────────────────────────────────
+const validateInvitoInsegnante = [
+  emailRules('email'),
+];
+
+// ─────────────────────────────────────────────
+// GET /api/invites/validate/:token  (pubblica)
+// ─────────────────────────────────────────────
+const validateInviteTokenParam = [
+  param('token')
+    .trim()
+    .notEmpty().withMessage('Token non valido')
+    .isHexadecimal().withMessage('Token non valido')
+    .isLength({ min: 64, max: 64 }).withMessage('Token non valido'),
+];
+
+// ─────────────────────────────────────────────
+// POST /api/auth/register-student
+// Email e classe NON sono accettate dal client: derivano dall'invito.
+// ─────────────────────────────────────────────
+const validateRegisterStudent = [
+  tokenRules('token', 'Token non valido'),
+  nomeRules('nome', 'Il nome'),
+  nomeRules('cognome', 'Il cognome'),
+  etaRules('eta'),
+  passwordRules('password'),
+];
+
+// ─────────────────────────────────────────────
+// POST /api/auth/register-teacher
+// Nessuna classe, nessuna età.
+// ─────────────────────────────────────────────
+const validateRegisterTeacher = [
+  tokenRules('token', 'Token non valido'),
+  nomeRules('nome', 'Il nome'),
+  nomeRules('cognome', 'Il cognome'),
+  passwordRules('password'),
+];
+
+// ─────────────────────────────────────────────
+// POST /api/auth/teacher-request  (candidatura insegnante)
+// ─────────────────────────────────────────────
+const validateTeacherRequest = [
+  nomeRules('nome', 'Il nome'),
+  nomeRules('cognome', 'Il cognome'),
+  emailRules('email'),
+  passwordRules('password'),
+  body('motivazione')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 1000 }).withMessage('La motivazione non può superare i 1000 caratteri'),
+];
+
+// ─────────────────────────────────────────────
+// POST /api/admin/teacher-requests/:id/reject
+// ─────────────────────────────────────────────
+const validateRifiutaCandidatura = [
+  param('id').isUUID().withMessage('ID non valido'),
+  body('motivazione')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 1000 }).withMessage('La motivazione non può superare i 1000 caratteri'),
+];
+
+// ─────────────────────────────────────────────
+// Validazione generica di un :id UUID nei parametri
+// ─────────────────────────────────────────────
+const validateIdParam = [
+  param('id').isUUID().withMessage('ID non valido'),
 ];
 
 // ─────────────────────────────────────────────
@@ -135,7 +195,14 @@ const validateResendVerification = [
 ];
 
 module.exports = {
-  validateRegistrazione,
+  validateInvitoStudente,
+  validateInvitoInsegnante,
+  validateInviteTokenParam,
+  validateRegisterStudent,
+  validateRegisterTeacher,
+  validateTeacherRequest,
+  validateRifiutaCandidatura,
+  validateIdParam,
   validateLogin,
   validateForgotPassword,
   validateResetPassword,

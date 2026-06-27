@@ -6,6 +6,7 @@ const sequelize = require('../config/database');
 const logger = require('../utils/logger');
 
 require('../models/Utente');
+require('../models/Invito');
 
 const migrate = async () => {
   try {
