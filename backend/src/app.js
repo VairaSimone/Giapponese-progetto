@@ -12,6 +12,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const inviteRoutes = require('./routes/inviteRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 const { passport } = require('./config/passport');
 const cookieParser = require('cookie-parser');
 const app = express();
@@ -106,6 +107,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // ─────────────────────────────────────────────
 // GESTIONE ROUTE NON TROVATE (404)

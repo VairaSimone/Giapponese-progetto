@@ -33,18 +33,22 @@ const ProfilePage = () => {
             <dt>{t('profile.email')}</dt>
             <dd>{user.email}</dd>
           </div>
-          <div>
-            <dt>{t('profile.age')}</dt>
-            <dd>{t('profile.ageValue', { age: user.eta })}</dd>
-          </div>
-          <div>
-            <dt>{t('profile.classe')}</dt>
-            <dd>{t(`classi.${user.classe}`)}</dd>
-          </div>
+          {user.eta != null && (
+            <div>
+              <dt>{t('profile.age')}</dt>
+              <dd>{t('profile.ageValue', { age: user.eta })}</dd>
+            </div>
+          )}
+          {user.classe && (
+            <div>
+              <dt>{t('profile.classe')}</dt>
+              <dd>{t(`classi.${user.classe}`)}</dd>
+            </div>
+          )}
           <div>
             <dt>{t('profile.role')}</dt>
             <dd>
-              <Badge tone={user.ruolo === 'insegnante' ? 'gold' : 'seal'}>
+              <Badge tone={user.ruolo === 'studente' ? 'seal' : 'gold'}>
                 {t(`roles.${user.ruolo}`)}
               </Badge>
             </dd>

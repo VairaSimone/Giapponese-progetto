@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 // Registra i modelli (e quindi le associazioni) prima di applicare le migrazioni.
 require('../models/Utente');
 require('../models/Invito');
+require('../models/ProgressoKana');
 
 /**
  * Runner delle migrazioni versionate basato su Umzug.

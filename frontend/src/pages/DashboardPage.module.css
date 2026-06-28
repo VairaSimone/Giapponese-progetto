@@ -65,3 +65,9 @@
   margin: 0;
   font-weight: 600;
 }
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

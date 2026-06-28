@@ -1,5 +1,4 @@
 import apiClient from '../api/axiosClient';
-import { getActiveLanguage } from '../i18n';
 
 /**
  * Service layer per il modulo Auth.
@@ -10,16 +9,31 @@ import { getActiveLanguage } from '../i18n';
 // ── Endpoint pubblici ──────────────────────────────────────────────
 
 /**
- * In registrazione inviamo esplicitamente `lingua` (lingua attiva del
- * frontend) così l'account viene creato con la preferenza corretta e
- * l'email di verifica parte già nella lingua giusta (il backend usa
- * `utente.lingua` per le email transazionali).
+ * Completa la registrazione di uno STUDENTE a partire da un token di invito.
+ * Email e classe sono ereditate dall'invito lato backend: qui si inviano solo
+ * i dati anagrafici e la password. L'account nasce già attivo e verificato.
  */
-export const register = async (payload) => {
-  const { data } = await apiClient.post('/auth/register', {
-    ...payload,
-    lingua: getActiveLanguage(),
-  });
+export const registerStudent = async (payload) => {
+  const { data } = await apiClient.post('/auth/register-student', payload);
+  return data;
+};
+
+/**
+ * Completa la registrazione di un INSEGNANTE a partire da un token di invito
+ * creato da un admin (onboarding diretto). Nessuna classe.
+ */
+export const registerTeacher = async (payload) => {
+  const { data } = await apiClient.post('/auth/register-teacher', payload);
+  return data;
+};
+
+/**
+ * Candidatura insegnante (self-service). Crea un account `in_attesa` che NON
+ * può effettuare il login finché un admin non lo approva. La risposta non
+ * restituisce dati utente.
+ */
+export const teacherRequest = async (payload) => {
+  const { data } = await apiClient.post('/auth/teacher-request', payload);
   return data;
 };
 

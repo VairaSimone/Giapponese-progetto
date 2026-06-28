@@ -38,45 +38,92 @@ const buildEmailSchema = (t) =>
     .email(t('validation.emailInvalid'))
     .max(255, t('validation.emailMax'));
 
-export const buildRegisterSchema = (t) =>
+const buildNomeSchema = (t, kind = 'nome') =>
+  z
+    .string()
+    .trim()
+    .min(1, t(`validation.${kind}Required`))
+    .min(2, t(`validation.${kind}Length`))
+    .max(100, t(`validation.${kind}Length`))
+    .regex(NAME_REGEX, t(`validation.${kind}Invalid`));
+
+const buildEtaSchema = (t) =>
+  z.coerce
+    .number({ message: t('validation.etaRequired') })
+    .int(t('validation.etaInt'))
+    .min(ETA_MIN, t('validation.etaMin', { min: ETA_MIN }))
+    .max(ETA_MAX, t('validation.etaMax', { max: ETA_MAX }));
+
+/**
+ * Completamento registrazione STUDENTE su invito.
+ * Email e classe NON sono nel form: derivano dall'invito (sola lettura).
+ */
+export const buildRegisterStudentSchema = (t) =>
   z
     .object({
-      nome: z
-        .string()
-        .trim()
-        .min(1, t('validation.nomeRequired'))
-        .min(2, t('validation.nomeLength'))
-        .max(100, t('validation.nomeLength'))
-        .regex(NAME_REGEX, t('validation.nomeInvalid')),
-
-      cognome: z
-        .string()
-        .trim()
-        .min(1, t('validation.cognomeRequired'))
-        .min(2, t('validation.cognomeLength'))
-        .max(100, t('validation.cognomeLength'))
-        .regex(NAME_REGEX, t('validation.cognomeInvalid')),
-
-      eta: z.coerce
-        .number({ message: t('validation.etaRequired') })
-        .int(t('validation.etaInt'))
-        .min(ETA_MIN, t('validation.etaMin', { min: ETA_MIN }))
-        .max(ETA_MAX, t('validation.etaMax', { max: ETA_MAX })),
-
-      email: buildEmailSchema(t),
-
+      nome: buildNomeSchema(t, 'nome'),
+      cognome: buildNomeSchema(t, 'cognome'),
+      eta: buildEtaSchema(t),
       password: buildPasswordSchema(t),
-
       confermaPassword: z.string().trim().min(1, t('validation.confirmRequired')),
-
-      classe: z.enum(CLASSI, {
-        message: t('validation.classeInvalid', { values: CLASSI.join(', ') }),
-      }),
     })
     .refine((data) => data.password === data.confermaPassword, {
       message: t('validation.passwordMismatch'),
       path: ['confermaPassword'],
     });
+
+/**
+ * Completamento registrazione INSEGNANTE su invito admin.
+ * Nessuna classe, nessuna età.
+ */
+export const buildRegisterTeacherSchema = (t) =>
+  z
+    .object({
+      nome: buildNomeSchema(t, 'nome'),
+      cognome: buildNomeSchema(t, 'cognome'),
+      password: buildPasswordSchema(t),
+      confermaPassword: z.string().trim().min(1, t('validation.confirmRequired')),
+    })
+    .refine((data) => data.password === data.confermaPassword, {
+      message: t('validation.passwordMismatch'),
+      path: ['confermaPassword'],
+    });
+
+/** Candidatura insegnante (self-service). */
+export const buildTeacherRequestSchema = (t) =>
+  z
+    .object({
+      nome: buildNomeSchema(t, 'nome'),
+      cognome: buildNomeSchema(t, 'cognome'),
+      email: buildEmailSchema(t),
+      password: buildPasswordSchema(t),
+      confermaPassword: z.string().trim().min(1, t('validation.confirmRequired')),
+      motivazione: z
+        .string()
+        .trim()
+        .max(1000, t('validation.motivazioneMax', { max: 1000 }))
+        .optional()
+        .or(z.literal('')),
+    })
+    .refine((data) => data.password === data.confermaPassword, {
+      message: t('validation.passwordMismatch'),
+      path: ['confermaPassword'],
+    });
+
+/** Creazione invito STUDENTE (email + classe). */
+export const buildStudentInviteSchema = (t) =>
+  z.object({
+    email: buildEmailSchema(t),
+    classe: z.enum(CLASSI, {
+      message: t('validation.classeInvalid', { values: CLASSI.join(', ') }),
+    }),
+  });
+
+/** Creazione invito INSEGNANTE (solo email). */
+export const buildTeacherInviteSchema = (t) =>
+  z.object({
+    email: buildEmailSchema(t),
+  });
 
 export const buildLoginSchema = (t) =>
   z.object({

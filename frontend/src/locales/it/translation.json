@@ -27,7 +27,8 @@
   },
   "roles": {
     "studente": "Studente",
-    "insegnante": "Insegnante"
+    "insegnante": "Insegnante",
+    "admin": "Amministratore"
   },
   "classi": {
     "Prima": "Prima",
@@ -43,7 +44,10 @@
     "login": "Accedi",
     "register": "Registrati",
     "logout": "Esci",
-    "mainNavAria": "Navigazione principale"
+    "mainNavAria": "Navigazione principale",
+    "invitesManagement": "Inviti",
+    "teacherRequests": "Candidature",
+    "teacherRequest": "Candidati"
   },
   "header": {
     "logoutSuccess": "Logout effettuato con successo."
@@ -51,7 +55,10 @@
   "home": {
     "subtitle": "La piattaforma per studenti e insegnanti per seguire il percorso di apprendimento della lingua giapponese, classe per classe.",
     "start": "Inizia ora",
-    "haveAccount": "Ho già un account"
+    "haveAccount": "Ho già un account",
+    "login": "Accedi",
+    "teacherCta": "Candidati come insegnante",
+    "studentInviteNote": "Gli studenti accedono alla piattaforma solo tramite invito del proprio insegnante."
   },
   "auth": {
     "fields": {
@@ -73,7 +80,10 @@
       "forgot": "Password dimenticata?",
       "submit": "Accedi",
       "noAccount": "Non hai un account?",
-      "success": "Accesso effettuato."
+      "success": "Accesso effettuato.",
+      "teacherPrompt": "Sei un insegnante?",
+      "teacherCta": "Invia una candidatura",
+      "studentInviteNote": "Gli studenti ricevono un invito via email dal proprio insegnante."
     },
     "register": {
       "title": "Crea il tuo account",
@@ -137,6 +147,35 @@
       "prompt": "Non hai ricevuto l'email di verifica?",
       "cta": "Re-invia email di verifica",
       "done": "Se l'indirizzo è registrato e non ancora verificato, riceverai a breve una nuova email di verifica."
+    },
+    "invite": {
+      "noTokenTitle": "Serve un invito",
+      "noTokenText": "Per registrarti hai bisogno di un link di invito valido. Gli studenti ricevono l'invito dal proprio insegnante.",
+      "goToLogin": "Vai al login",
+      "teacherPrompt": "Sei un insegnante?",
+      "teacherCta": "Invia una candidatura",
+      "checking": "Verifica dell'invito in corso",
+      "invalidTitle": "Invito non valido",
+      "successTitle": "Registrazione completata",
+      "successText": "Il tuo account è stato creato. Ora puoi effettuare il login.",
+      "successCta": "Vai al login",
+      "studentTitle": "Completa la registrazione",
+      "studentSubtitle": "Inserisci i tuoi dati per attivare l'account studente.",
+      "teacherTitle": "Completa la registrazione",
+      "teacherSubtitle": "Inserisci i tuoi dati per attivare l'account insegnante.",
+      "submit": "Completa registrazione",
+      "haveAccount": "Hai già un account?"
+    },
+    "teacherRequest": {
+      "title": "Candidatura insegnante",
+      "subtitle": "Invia la tua candidatura: un amministratore la valuterà prima di abilitare l'accesso.",
+      "submit": "Invia candidatura",
+      "haveAccount": "Hai già un account?",
+      "motivazioneLabel": "Messaggio (facoltativo)",
+      "motivazioneHint": "Aggiungi una breve presentazione per l'amministratore.",
+      "successTitle": "Candidatura inviata",
+      "successText": "La tua candidatura è in attesa di approvazione. Riceverai un'email quando un amministratore l'avrà esaminata.",
+      "successCta": "Torna al login"
     }
   },
   "dashboard": {
@@ -149,7 +188,11 @@
     "manageProfile": "Gestisci profilo",
     "teacherCardTitle": "Gestione classe",
     "teacherCardText": "Visualizza l'elenco degli studenti, modifica i ruoli e gestisci gli account registrati sulla piattaforma.",
-    "teacherCardCta": "Vai alla gestione utenti"
+    "teacherCardCta": "Vai alla gestione utenti",
+    "invitesCardCta": "Gestisci inviti",
+    "adminCardTitle": "Candidature insegnante",
+    "adminCardText": "Esamina le richieste di accesso degli insegnanti e approva o rifiuta le candidature in attesa.",
+    "adminCardCta": "Vai alle candidature"
   },
   "profile": {
     "title": "Il tuo profilo",
@@ -264,7 +307,22 @@
       "GOOGLE_OAUTH_DISABLED": "Il login con Google non è al momento disponibile.",
       "USE_GOOGLE_LOGIN": "Questo account usa l'accesso con Google. Usa il pulsante “Continua con Google”.",
       "GOOGLE_NO_EMAIL": "Il profilo Google non espone un'email: impossibile completare l'accesso.",
-      "INVALID_LANGUAGE": "Lingua non supportata."
+      "INVALID_LANGUAGE": "Lingua non supportata.",
+      "ACCOUNT_PENDING": "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+      "ACCOUNT_NOT_ACTIVE": "Questo account non è abilitato ad accedere. Contatta un amministratore.",
+      "GOOGLE_NO_ACCOUNT": "Nessun account associato a questo indirizzo Google. L'accesso è riservato agli utenti invitati.",
+      "INVALID_INVITE": "Invito non valido o revocato.",
+      "INVITE_EXPIRED": "Invito scaduto. Richiedine uno nuovo.",
+      "INVITE_ALREADY_USED": "Questo invito è già stato utilizzato.",
+      "INVITE_ROLE_MISMATCH": "Invito non valido per questo tipo di registrazione.",
+      "INVITE_NOT_FOUND": "Invito non trovato.",
+      "INVITE_NOT_PENDING": "Solo gli inviti ancora pendenti possono essere revocati.",
+      "EMAIL_ALREADY_REGISTERED": "Esiste già un account registrato con questa email.",
+      "INVALID_CLASS": "Classe non valida.",
+      "REQUEST_NOT_FOUND": "Candidatura insegnante non trovata.",
+      "ALREADY_ACTIVE": "Questo insegnante è già attivo.",
+      "ADMIN_ROLE_FORBIDDEN": "Operazione riservata agli amministratori.",
+      "LAST_ADMIN": "Impossibile eliminare o declassare l'ultimo amministratore."
     }
   },
   "validation": {
@@ -286,6 +344,61 @@
     "confirmRequired": "Conferma la password",
     "passwordMismatch": "Le password non coincidono",
     "classeInvalid": "La classe deve essere una di: {{values}}",
-    "roleInvalid": "Ruolo non valido"
+    "roleInvalid": "Ruolo non valido",
+    "motivazioneMax": "Il messaggio non può superare i {{max}} caratteri"
+  },
+  "stati": {
+    "attivo": "Attivo",
+    "in_attesa": "In attesa",
+    "rifiutato": "Rifiutato"
+  },
+  "invites": {
+    "managementTitle": "Gestione inviti",
+    "managementSubtitle": "Invita nuovi studenti e tieni traccia degli inviti inviati.",
+    "create": {
+      "studentTitle": "Invita uno studente",
+      "studentText": "Inserisci l'email dello studente e assegna una classe: riceverà un link per completare la registrazione.",
+      "teacherTitle": "Invita un insegnante",
+      "teacherText": "Inserisci l'email dell'insegnante: riceverà un link per completare la registrazione, senza bisogno di approvazione.",
+      "submit": "Invia invito",
+      "studentSuccess": "Invito inviato a {{email}}.",
+      "teacherSuccess": "Invito insegnante inviato a {{email}}."
+    },
+    "list": {
+      "title": "Inviti inviati",
+      "expires": "Scade il {{date}}",
+      "revoke": "Revoca",
+      "revoked": "Invito per {{email}} revocato.",
+      "confirmTitle": "Revocare questo invito?",
+      "confirmDescription": "Il link inviato a {{email}} non sarà più utilizzabile.",
+      "emptyTitle": "Nessun invito",
+      "emptyDescription": "Gli inviti che invii compariranno qui."
+    },
+    "status": {
+      "pendente": "In attesa",
+      "completato": "Completato",
+      "revocato": "Revocato"
+    },
+    "filters": {
+      "statoLabel": "Stato",
+      "statoAll": "Tutti"
+    }
+  },
+  "admin": {
+    "requests": {
+      "title": "Candidature insegnante",
+      "subtitle": "Approva o rifiuta le richieste di accesso degli insegnanti.",
+      "filterLabel": "Stato",
+      "filterAll": "Tutte",
+      "approve": "Approva",
+      "reject": "Rifiuta",
+      "approved": "Candidatura di {{name}} approvata.",
+      "rejected": "Candidatura di {{name}} rifiutata.",
+      "submittedOn": "Inviata il {{date}}",
+      "confirmRejectTitle": "Rifiutare questa candidatura?",
+      "confirmRejectDescription": "La candidatura di {{name}} verrà rifiutata e l'accesso resterà negato.",
+      "emptyTitle": "Nessuna candidatura",
+      "emptyDescription": "Non ci sono candidature insegnante per il filtro selezionato."
+    }
   }
 }

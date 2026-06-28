@@ -1,7 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore, selectIsTeacher } from '../store/authStore';
+import {
+  useAuthStore,
+  selectIsAdmin,
+  selectCanManage,
+} from '../store/authStore';
 import { ROUTES } from '../constants/routes';
+import { ROLES } from '../constants/domain';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -10,9 +15,12 @@ import styles from './DashboardPage.module.css';
 const DashboardPage = () => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
-  const isTeacher = useAuthStore(selectIsTeacher);
+  const isAdmin = useAuthStore(selectIsAdmin);
+  const canManage = useAuthStore(selectCanManage);
 
   if (!user) return null; // ProtectedRoute garantisce che qui user esista sempre
+
+  const roleTone = user.ruolo === ROLES.STUDENTE ? 'seal' : 'gold';
 
   return (
     <div className={styles.page}>
@@ -28,15 +36,15 @@ const DashboardPage = () => {
             <div className={styles.summaryRow}>
               <dt>{t('dashboard.labelRole')}</dt>
               <dd>
-                <Badge tone={isTeacher ? 'gold' : 'seal'}>
-                  {t(`roles.${user.ruolo}`)}
-                </Badge>
+                <Badge tone={roleTone}>{t(`roles.${user.ruolo}`)}</Badge>
               </dd>
             </div>
-            <div className={styles.summaryRow}>
-              <dt>{t('dashboard.labelClasse')}</dt>
-              <dd>{t(`classi.${user.classe}`)}</dd>
-            </div>
+            {user.classe && (
+              <div className={styles.summaryRow}>
+                <dt>{t('dashboard.labelClasse')}</dt>
+                <dd>{t(`classi.${user.classe}`)}</dd>
+              </div>
+            )}
             <div className={styles.summaryRow}>
               <dt>{t('dashboard.labelEmail')}</dt>
               <dd>{user.email}</dd>
@@ -49,12 +57,29 @@ const DashboardPage = () => {
           </Link>
         </Card>
 
-        {isTeacher && (
+        {canManage && (
           <Card className={styles.summaryCard}>
             <h2 className={styles.cardTitle}>{t('dashboard.teacherCardTitle')}</h2>
             <p className={styles.cardText}>{t('dashboard.teacherCardText')}</p>
-            <Link to={ROUTES.USERS_MANAGEMENT}>
-              <Button size="sm">{t('dashboard.teacherCardCta')}</Button>
+            <div className={styles.cardActions}>
+              <Link to={ROUTES.USERS_MANAGEMENT}>
+                <Button size="sm">{t('dashboard.teacherCardCta')}</Button>
+              </Link>
+              <Link to={ROUTES.INVITES_MANAGEMENT}>
+                <Button variant="secondary" size="sm">
+                  {t('dashboard.invitesCardCta')}
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
+        {isAdmin && (
+          <Card className={styles.summaryCard}>
+            <h2 className={styles.cardTitle}>{t('dashboard.adminCardTitle')}</h2>
+            <p className={styles.cardText}>{t('dashboard.adminCardText')}</p>
+            <Link to={ROUTES.ADMIN_TEACHER_REQUESTS}>
+              <Button size="sm">{t('dashboard.adminCardCta')}</Button>
             </Link>
           </Card>
         )}

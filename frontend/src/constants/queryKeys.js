@@ -12,4 +12,13 @@ export const queryKeys = Object.freeze({
     all: ['users'],
     list: (filters) => ['users', 'list', filters ?? {}],
   },
+  invites: {
+    all: ['invites'],
+    list: (filters) => ['invites', 'list', filters ?? {}],
+    validate: (token) => ['invites', 'validate', token],
+  },
+  teacherRequests: {
+    all: ['teacherRequests'],
+    list: (filters) => ['teacherRequests', 'list', filters ?? {}],
+  },
 });

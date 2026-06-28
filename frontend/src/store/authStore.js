@@ -32,3 +32,7 @@ export const useAuthStore = create(
 /** Selettori comodi per evitare ricalcoli/derivazioni ripetute nei componenti */
 export const selectIsAuthenticated = (state) => Boolean(state.user);
 export const selectIsTeacher = (state) => state.user?.ruolo === 'insegnante';
+export const selectIsAdmin = (state) => state.user?.ruolo === 'admin';
+/** Insegnanti e admin possono gestire utenti e creare inviti studente. */
+export const selectCanManage = (state) =>
+  state.user?.ruolo === 'insegnante' || state.user?.ruolo === 'admin';

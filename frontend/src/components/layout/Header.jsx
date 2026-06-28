@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import {
   useAuthStore,
   selectIsAuthenticated,
-  selectIsTeacher,
+  selectIsAdmin,
+  selectCanManage,
 } from '../../store/authStore';
 import { useLogout } from '../../hooks/useLogout';
 import { ROUTES } from '../../constants/routes';
@@ -18,7 +19,8 @@ const Header = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
-  const isTeacher = useAuthStore(selectIsTeacher);
+  const isAdmin = useAuthStore(selectIsAdmin);
+  const canManage = useAuthStore(selectCanManage);
   const logoutMutation = useLogout();
 
   const handleLogout = async () => {
@@ -52,9 +54,19 @@ const Header = () => {
             <Link to={ROUTES.PROFILE} className={styles.navLink}>
               {t('nav.profile')}
             </Link>
-            {isTeacher && (
-              <Link to={ROUTES.USERS_MANAGEMENT} className={styles.navLink}>
-                {t('nav.usersManagement')}
+            {canManage && (
+              <>
+                <Link to={ROUTES.USERS_MANAGEMENT} className={styles.navLink}>
+                  {t('nav.usersManagement')}
+                </Link>
+                <Link to={ROUTES.INVITES_MANAGEMENT} className={styles.navLink}>
+                  {t('nav.invitesManagement')}
+                </Link>
+              </>
+            )}
+            {isAdmin && (
+              <Link to={ROUTES.ADMIN_TEACHER_REQUESTS} className={styles.navLink}>
+                {t('nav.teacherRequests')}
               </Link>
             )}
           </nav>
@@ -82,8 +94,8 @@ const Header = () => {
               <Link to={ROUTES.LOGIN} className={styles.navLink}>
                 {t('nav.login')}
               </Link>
-              <Button size="sm" onClick={() => navigate(ROUTES.REGISTER)}>
-                {t('nav.register')}
+              <Button size="sm" onClick={() => navigate(ROUTES.TEACHER_REQUEST)}>
+                {t('nav.teacherRequest')}
               </Button>
             </>
           )}

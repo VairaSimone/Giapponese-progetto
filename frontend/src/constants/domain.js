@@ -13,9 +13,42 @@
 export const ROLES = Object.freeze({
   STUDENTE: 'studente',
   INSEGNANTE: 'insegnante',
+  ADMIN: 'admin',
 });
 
+/**
+ * Opzioni mostrate nel <select> di cambio ruolo della gestione utenti.
+ * Volutamente NON include 'admin': l'assegnazione del ruolo admin è
+ * un'operazione sensibile, riservata e non esposta tramite una dropdown
+ * (il backend la blocca comunque per i non-admin). Gli utenti già admin
+ * vengono mostrati come badge in sola lettura (vedi UserRow).
+ */
 export const ROLE_OPTIONS = [ROLES.STUDENTE, ROLES.INSEGNANTE];
+
+/**
+ * Stato del ciclo di vita dell'account (rispecchia il campo `stato` del
+ * modello Sequelize `Utente`). Un utente loggato è sempre 'attivo' (il
+ * backend nega il login agli altri stati): questi valori servono per la
+ * gestione lato insegnante/admin (lista utenti, candidature).
+ */
+export const ACCOUNT_STATES = Object.freeze({
+  ATTIVO: 'attivo',
+  IN_ATTESA: 'in_attesa',
+  RIFIUTATO: 'rifiutato',
+});
+
+/** Stato del ciclo di vita di un invito (modello `Invito`). */
+export const INVITE_STATES = Object.freeze({
+  PENDENTE: 'pendente',
+  COMPLETATO: 'completato',
+  REVOCATO: 'revocato',
+});
+
+/** Ruoli che un invito può conferire. */
+export const INVITE_ROLES = Object.freeze({
+  STUDENTE: 'studente',
+  INSEGNANTE: 'insegnante',
+});
 
 export const CLASSI = Object.freeze(['Prima', 'Seconda', 'Terza', 'Quarta', 'Quinta']);
 
@@ -66,7 +99,25 @@ export const API_ERROR_CODES = Object.freeze({
   GOOGLE_OAUTH_DISABLED: 'GOOGLE_OAUTH_DISABLED',
   USE_GOOGLE_LOGIN: 'USE_GOOGLE_LOGIN',
   GOOGLE_NO_EMAIL: 'GOOGLE_NO_EMAIL',
+  GOOGLE_NO_ACCOUNT: 'GOOGLE_NO_ACCOUNT',
   INVALID_LANGUAGE: 'INVALID_LANGUAGE',
+  // Stato account (login negato per insegnanti non attivi)
+  ACCOUNT_PENDING: 'ACCOUNT_PENDING',
+  ACCOUNT_NOT_ACTIVE: 'ACCOUNT_NOT_ACTIVE',
+  // Sistema inviti
+  INVALID_INVITE: 'INVALID_INVITE',
+  INVITE_EXPIRED: 'INVITE_EXPIRED',
+  INVITE_ALREADY_USED: 'INVITE_ALREADY_USED',
+  INVITE_ROLE_MISMATCH: 'INVITE_ROLE_MISMATCH',
+  INVITE_NOT_FOUND: 'INVITE_NOT_FOUND',
+  INVITE_NOT_PENDING: 'INVITE_NOT_PENDING',
+  EMAIL_ALREADY_REGISTERED: 'EMAIL_ALREADY_REGISTERED',
+  INVALID_CLASS: 'INVALID_CLASS',
+  // Approvazione insegnanti / ruoli admin
+  REQUEST_NOT_FOUND: 'REQUEST_NOT_FOUND',
+  ALREADY_ACTIVE: 'ALREADY_ACTIVE',
+  ADMIN_ROLE_FORBIDDEN: 'ADMIN_ROLE_FORBIDDEN',
+  LAST_ADMIN: 'LAST_ADMIN',
 });
 
 /** Età minima/massima ammesse in registrazione (vedi modello Utente) */

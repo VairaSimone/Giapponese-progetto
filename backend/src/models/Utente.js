@@ -244,6 +244,54 @@ Utente.init(
       defaultValue: true,
       field: 'profilo_completo',
     },
+
+    // ─────────────────────────────────────────────
+    // Statistiche di gioco globali (Quiz Kana)
+    // Il livello NON è memorizzato: è derivato dagli XP con la formula
+    //   livello = Math.floor(Math.sqrt(xp / 100)) + 1
+    // (cfr. quizService.calcolaLivello), per evitare disallineamenti.
+    // ─────────────────────────────────────────────
+
+    // Punti esperienza totali accumulati.
+    xp: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: { args: [0], msg: 'Gli XP non possono essere negativi' },
+      },
+    },
+
+    // Giorni di studio consecutivi.
+    streak: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: { args: [0], msg: 'La streak non può essere negativa' },
+      },
+    },
+
+    // Ultima data di studio (solo data, niente orario): usata per calcolare
+    // la continuità della streak. Normalizzata in UTC dal quizService.
+    ultima_data_studio: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      defaultValue: null,
+      field: 'ultima_data_studio',
+    },
+
+    // Percentuale massima ottenuta in un singolo quiz (0-100).
+    punteggio_record: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'punteggio_record',
+      validate: {
+        min: { args: [0], msg: 'Il punteggio record non può essere negativo' },
+        max: { args: [100], msg: 'Il punteggio record non può superare 100' },
+      },
+    },
   },
   {
     sequelize,

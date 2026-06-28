@@ -7,11 +7,17 @@ import {
   useDeleteUserByTeacher,
 } from '../../../hooks/useUserManagementMutations';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
-import { ROLE_OPTIONS } from '../../../constants/domain';
+import { ROLE_OPTIONS, ROLES, ACCOUNT_STATES } from '../../../constants/domain';
 import Badge from '../../../components/ui/Badge';
 import Button from '../../../components/ui/Button';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog';
 import styles from './UserRow.module.css';
+
+const STATE_TONE = {
+  [ACCOUNT_STATES.ATTIVO]: 'matcha',
+  [ACCOUNT_STATES.IN_ATTESA]: 'gold',
+  [ACCOUNT_STATES.RIFIUTATO]: 'danger',
+};
 
 const UserRow = ({ utente }) => {
   const { t } = useTranslation();
@@ -21,6 +27,9 @@ const UserRow = ({ utente }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const isSelf = currentUser?.id === utente.id;
+  // Il ruolo admin non è assegnabile dalla dropdown (operazione riservata):
+  // gli account admin sono mostrati come badge in sola lettura.
+  const isAdminRow = utente.ruolo === ROLES.ADMIN;
   const fullName = `${utente.nome} ${utente.cognome}`;
 
   const handleRoleChange = async (event) => {
@@ -60,34 +69,45 @@ const UserRow = ({ utente }) => {
             <span className={styles.email}>{utente.email}</span>
           </div>
         </td>
-        <td>{t(`classi.${utente.classe}`)}</td>
+        <td>{utente.classe ? t(`classi.${utente.classe}`) : '—'}</td>
         <td>
-          <Badge tone={utente.email_verificata ? 'matcha' : 'danger'}>
-            {utente.email_verificata
-              ? t('profile.verified')
-              : t('profile.notVerified')}
-          </Badge>
+          <div className={styles.statusCell}>
+            <Badge tone={utente.email_verificata ? 'matcha' : 'danger'}>
+              {utente.email_verificata
+                ? t('profile.verified')
+                : t('profile.notVerified')}
+            </Badge>
+            {utente.stato && utente.stato !== ACCOUNT_STATES.ATTIVO && (
+              <Badge tone={STATE_TONE[utente.stato] ?? 'neutral'}>
+                {t(`stati.${utente.stato}`)}
+              </Badge>
+            )}
+          </div>
         </td>
         <td>
-          <select
-            className={styles.roleSelect}
-            value={utente.ruolo}
-            onChange={handleRoleChange}
-            disabled={updateRoleMutation.isPending || isSelf}
-            aria-label={t('users.row.roleAria', { name: fullName })}
-          >
-            {ROLE_OPTIONS.map((role) => (
-              <option key={role} value={role}>
-                {t(`roles.${role}`)}
-              </option>
-            ))}
-          </select>
+          {isAdminRow ? (
+            <Badge tone="gold">{t('roles.admin')}</Badge>
+          ) : (
+            <select
+              className={styles.roleSelect}
+              value={utente.ruolo}
+              onChange={handleRoleChange}
+              disabled={updateRoleMutation.isPending || isSelf}
+              aria-label={t('users.row.roleAria', { name: fullName })}
+            >
+              {ROLE_OPTIONS.map((role) => (
+                <option key={role} value={role}>
+                  {t(`roles.${role}`)}
+                </option>
+              ))}
+            </select>
+          )}
         </td>
         <td className={styles.actionsCell}>
           <Button
             variant="danger"
             size="sm"
-            disabled={isSelf}
+            disabled={isSelf || isAdminRow}
             onClick={() => setIsConfirmingDelete(true)}
           >
             {t('users.row.delete')}

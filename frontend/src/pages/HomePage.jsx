@@ -15,15 +15,16 @@ const HomePage = () => {
       <h1 className={styles.title}>{import.meta.env.VITE_APP_NAME}</h1>
       <p className={styles.subtitle}>{t('home.subtitle')}</p>
       <div className={styles.actions}>
-        <Link to={ROUTES.REGISTER}>
-          <Button size="lg">{t('home.start')}</Button>
-        </Link>
         <Link to={ROUTES.LOGIN}>
+          <Button size="lg">{t('home.login')}</Button>
+        </Link>
+        <Link to={ROUTES.TEACHER_REQUEST}>
           <Button size="lg" variant="secondary">
-            {t('home.haveAccount')}
+            {t('home.teacherCta')}
           </Button>
         </Link>
       </div>
+      <p className={styles.note}>{t('home.studentInviteNote')}</p>
     </div>
   );
 };

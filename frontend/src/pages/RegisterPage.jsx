@@ -1,62 +1,131 @@
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
-import { buildRegisterSchema } from '../validators/authSchemas';
-import { useRegister } from '../hooks/useRegister';
+import {
+  buildRegisterStudentSchema,
+  buildRegisterTeacherSchema,
+} from '../validators/authSchemas';
+import { useInviteToken } from '../hooks/useInviteToken';
+import {
+  useRegisterStudent,
+  useRegisterTeacher,
+} from '../hooks/useInviteRegistration';
 import { parseApiError } from '../utils/parseApiError';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { ROUTES } from '../constants/routes';
-import { CLASSI } from '../constants/domain';
+import { INVITE_ROLES } from '../constants/domain';
 import Card from '../components/ui/Card';
 import TextField from '../components/ui/TextField';
-import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
+import Spinner from '../components/ui/Spinner';
 import FormError from '../components/shared/FormError';
-import GoogleAuthButton from '../features/auth/components/GoogleAuthButton';
 import styles from './AuthPage.module.css';
 
 const RegisterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const registerMutation = useRegister();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
+  const { data: invito, isLoading, isError, error: inviteError } = useInviteToken(token);
+  const isTeacherInvite = invito?.ruolo === INVITE_ROLES.INSEGNANTE;
+
+  // Lo schema dipende dal tipo di invito (studente richiede anche l'età).
+  const schema = useMemo(
+    () => (isTeacherInvite ? buildRegisterTeacherSchema(t) : buildRegisterStudentSchema(t)),
+    [t, isTeacherInvite]
+  );
+
+  const registerStudent = useRegisterStudent();
+  const registerTeacher = useRegisterTeacher();
   const [formError, setFormError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  const schema = useMemo(() => buildRegisterSchema(t), [t]);
 
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors },
-  } = useForm({
-    resolver: zodResolver(schema),
-  });
+  } = useForm({ resolver: zodResolver(schema) });
 
-  const onSubmit = async ({ confermaPassword: _confermaPassword, ...payload }) => {
+  const onSubmit = async ({ confermaPassword: _confermaPassword, ...values }) => {
     setFormError(null);
-
     try {
-      await registerMutation.mutateAsync(payload);
+      if (isTeacherInvite) {
+        await registerTeacher.mutateAsync({ token, ...values });
+      } else {
+        await registerStudent.mutateAsync({ token, ...values });
+      }
       setIsSuccess(true);
-    } catch (error) {
-      const parsed = parseApiError(error);
-
-      // Mappa eventuali errori per-campo restituiti dal validatore server (422)
+    } catch (err) {
+      const parsed = parseApiError(err);
       if (parsed.fieldErrors) {
         Object.entries(parsed.fieldErrors).forEach(([field, message]) => {
-          if (field in payload) {
-            setError(field, { type: 'server', message });
-          }
+          if (field in values) setError(field, { type: 'server', message });
         });
       }
-
-      setFormError(getApiErrorMessage(t, error));
+      setFormError(getApiErrorMessage(t, err));
     }
   };
 
+  // ── Token assente: nessuna registrazione pubblica ──────────────────
+  if (!token) {
+    return (
+      <div className={styles.wrapper}>
+        <Card className={styles.card}>
+          <div className={styles.header}>
+            <span className={styles.mark} aria-hidden="true">
+              鍵
+            </span>
+            <h1 className={styles.title}>{t('auth.invite.noTokenTitle')}</h1>
+            <p className={styles.subtitle}>{t('auth.invite.noTokenText')}</p>
+          </div>
+          <Button fullWidth onClick={() => navigate(ROUTES.LOGIN)}>
+            {t('auth.invite.goToLogin')}
+          </Button>
+          <p className={styles.switchAuth}>
+            {t('auth.invite.teacherPrompt')}{' '}
+            <Link to={ROUTES.TEACHER_REQUEST}>{t('auth.invite.teacherCta')}</Link>
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Validazione token in corso ─────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className={styles.wrapper}>
+        <Card className={styles.card}>
+          <Spinner size="lg" label={t('auth.invite.checking')} />
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Token non valido / scaduto / già usato ─────────────────────────
+  if (isError) {
+    return (
+      <div className={styles.wrapper}>
+        <Card className={styles.card}>
+          <div className={styles.header}>
+            <span className={styles.mark} aria-hidden="true">
+              ✕
+            </span>
+            <h1 className={styles.title}>{t('auth.invite.invalidTitle')}</h1>
+            <p className={styles.subtitle}>{getApiErrorMessage(t, inviteError)}</p>
+          </div>
+          <Button fullWidth onClick={() => navigate(ROUTES.LOGIN)}>
+            {t('auth.invite.goToLogin')}
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Successo ───────────────────────────────────────────────────────
   if (isSuccess) {
     return (
       <div className={styles.wrapper}>
@@ -65,16 +134,19 @@ const RegisterPage = () => {
             <div className={styles.successIcon} aria-hidden="true">
               済
             </div>
-            <h1 className={styles.title}>{t('auth.register.successTitle')}</h1>
-            <p className={styles.successText}>{t('auth.register.successText')}</p>
+            <h1 className={styles.title}>{t('auth.invite.successTitle')}</h1>
+            <p className={styles.successText}>{t('auth.invite.successText')}</p>
             <Button fullWidth onClick={() => navigate(ROUTES.LOGIN)}>
-              {t('auth.register.successCta')}
+              {t('auth.invite.successCta')}
             </Button>
           </div>
         </Card>
       </div>
     );
   }
+
+  // ── Form di completamento ──────────────────────────────────────────
+  const isPending = registerStudent.isPending || registerTeacher.isPending;
 
   return (
     <div className={styles.wrapper}>
@@ -83,15 +155,35 @@ const RegisterPage = () => {
           <span className={styles.mark} aria-hidden="true">
             登
           </span>
-          <h1 className={styles.title}>{t('auth.register.title')}</h1>
-          <p className={styles.subtitle}>{t('auth.register.subtitle')}</p>
+          <h1 className={styles.title}>
+            {isTeacherInvite
+              ? t('auth.invite.teacherTitle')
+              : t('auth.invite.studentTitle')}
+          </h1>
+          <p className={styles.subtitle}>
+            {isTeacherInvite
+              ? t('auth.invite.teacherSubtitle')
+              : t('auth.invite.studentSubtitle')}
+          </p>
         </div>
 
         <FormError message={formError} />
 
-        <GoogleAuthButton label={t('auth.google.buttonRegister')} />
-
-        <div className={styles.separator}>{t('auth.orSeparator')}</div>
+        {/* Dati ereditati dall'invito (sola lettura) */}
+        <TextField
+          label={t('auth.fields.email')}
+          value={invito.email}
+          readOnly
+          disabled
+        />
+        {!isTeacherInvite && (
+          <TextField
+            label={t('auth.fields.classe')}
+            value={t(`classi.${invito.classe}`)}
+            readOnly
+            disabled
+          />
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className={styles.formRow}>
@@ -111,7 +203,7 @@ const RegisterPage = () => {
             />
           </div>
 
-          <div className={styles.formRow}>
+          {!isTeacherInvite && (
             <TextField
               label={t('auth.fields.eta')}
               type="number"
@@ -121,28 +213,7 @@ const RegisterPage = () => {
               error={errors.eta?.message}
               {...register('eta')}
             />
-            <Select
-              label={t('auth.fields.classe')}
-              required
-              error={errors.classe?.message}
-              {...register('classe')}
-            >
-              {CLASSI.map((classe) => (
-                <option key={classe} value={classe}>
-                  {t(`classi.${classe}`)}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <TextField
-            label={t('auth.fields.email')}
-            type="email"
-            autoComplete="email"
-            required
-            error={errors.email?.message}
-            {...register('email')}
-          />
+          )}
 
           <TextField
             label={t('auth.fields.password')}
@@ -163,13 +234,13 @@ const RegisterPage = () => {
             {...register('confermaPassword')}
           />
 
-          <Button type="submit" fullWidth size="lg" isLoading={registerMutation.isPending}>
-            {t('auth.register.submit')}
+          <Button type="submit" fullWidth size="lg" isLoading={isPending}>
+            {t('auth.invite.submit')}
           </Button>
         </form>
 
         <p className={styles.switchAuth}>
-          {t('auth.register.haveAccount')} <Link to={ROUTES.LOGIN}>{t('nav.login')}</Link>
+          {t('auth.invite.haveAccount')} <Link to={ROUTES.LOGIN}>{t('nav.login')}</Link>
         </p>
       </Card>
     </div>

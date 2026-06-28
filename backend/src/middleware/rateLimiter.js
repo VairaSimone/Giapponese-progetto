@@ -153,6 +153,25 @@ const teacherRequestLimiter = rateLimit({
   },
 });
 
+/**
+ * Limita l'invio dei risultati del quiz: evita che un client abusi
+ * dell'endpoint per gonfiare XP/streak con invii massivi automatizzati.
+ */
+const quizSubmitLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuti
+  max: parseInt(process.env.QUIZ_SUBMIT_RATE_LIMIT_MAX) || 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'fail',
+    code: 'TOO_MANY_REQUESTS',
+    message: 'Troppi invii di quiz. Riprova tra qualche minuto.',
+  },
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  },
+});
+
 module.exports = {
   globalLimiter,
   loginLimiter,
@@ -162,4 +181,5 @@ module.exports = {
   resendVerificationLimiter,
   inviteLimiter,
   teacherRequestLimiter,
+  quizSubmitLimiter,
 };

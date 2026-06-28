@@ -178,8 +178,10 @@ const LoginPage = () => {
         </form>
 
         <p className={styles.switchAuth}>
-          {t('auth.login.noAccount')} <Link to={ROUTES.REGISTER}>{t('nav.register')}</Link>
+          {t('auth.login.teacherPrompt')}{' '}
+          <Link to={ROUTES.TEACHER_REQUEST}>{t('auth.login.teacherCta')}</Link>
         </p>
+        <p className={styles.switchAuth}>{t('auth.login.studentInviteNote')}</p>
       </Card>
     </div>
   );

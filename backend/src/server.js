@@ -8,6 +8,7 @@ const logger = require('./utils/logger');
 
 require('./models/Utente');
 require('./models/Invito');
+require('./models/ProgressoKana');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 
