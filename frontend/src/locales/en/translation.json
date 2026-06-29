@@ -220,7 +220,9 @@
     "deleteConfirmText": "Are you sure? This operation cannot be undone.",
     "deleteConfirm": "Yes, delete permanently",
     "deleteCta": "Delete my account",
-    "deleteSuccess": "Your account has been deleted."
+    "deleteSuccess": "Your account has been deleted.",
+    "badgesTitle": "Goals and badges",
+    "badgesDescription": "The milestones you have reached by studying, writing and keeping your streak alive."
   },
   "users": {
     "managementTitle": "User management",
@@ -452,7 +454,8 @@
       "correct": "Correct",
       "wrong": "Wrong",
       "playAgain": "Play again",
-      "backToDashboard": "Back to overview"
+      "backToDashboard": "Back to overview",
+      "xpRows": "XP from unlocked rows"
     },
     "practiceWriting": "Writing practice",
     "audio": {
@@ -478,7 +481,8 @@
       "retryStroke": "Stroke not recognized: try again following the guide.",
       "strokeProgress": "Stroke {{current}} of {{total}}",
       "undo": "Undo",
-      "clear": "Clear"
+      "clear": "Clear",
+      "xpEarned": "+{{xp}} XP earned"
     },
     "practice": {
       "back": "Back to quiz",
@@ -486,6 +490,88 @@
       "next": "Next",
       "counter": "{{current}} of {{total}}",
       "pickerTitle": "Choose a character"
+    },
+    "gamification": {
+      "title": "Your progress",
+      "streakDays_one": "{{count}}-day streak",
+      "streakDays_other": "{{count}}-day streak",
+      "streakHint": "Keep it up: come back tomorrow to keep the flame alive.",
+      "streakHintEmpty": "Complete a quiz today to light up your streak.",
+      "badgeSummary": "{{unlocked}} / {{total}} badges unlocked",
+      "goToQuiz": "Go to quiz",
+      "viewBadges": "View badges"
+    },
+    "badges": {
+      "summary": "{{unlocked}} / {{total}} unlocked",
+      "unlockedToast": "Badge unlocked: {{name}}!",
+      "unlocked": "Unlocked",
+      "unlockedOn": "Unlocked on {{date}}",
+      "locked": "Locked",
+      "masteryHiragana": "Hiragana mastered",
+      "masteryKatakana": "Katakana mastered",
+      "rowsUnlocked": "Rows unlocked",
+      "categories": {
+        "streak": "Consistency",
+        "livello": "Level",
+        "quiz": "Quiz",
+        "maestria": "Mastery",
+        "scrittura": "Writing",
+        "sblocco": "Exploration"
+      },
+      "items": {
+        "STREAK_3": {
+          "name": "First sparks",
+          "description": "Study for 3 days in a row."
+        },
+        "STREAK_7": {
+          "name": "Week on fire",
+          "description": "Keep a 7-day streak."
+        },
+        "STREAK_30": {
+          "name": "Unstoppable flame",
+          "description": "Keep a 30-day streak."
+        },
+        "LIVELLO_5": {
+          "name": "Apprentice",
+          "description": "Reach level 5."
+        },
+        "LIVELLO_10": {
+          "name": "Veteran",
+          "description": "Reach level 10."
+        },
+        "PRIMO_QUIZ": {
+          "name": "First step",
+          "description": "Complete your first quiz."
+        },
+        "QUIZ_50": {
+          "name": "Review marathoner",
+          "description": "Complete 50 quizzes."
+        },
+        "PERFEZIONISTA": {
+          "name": "Perfectionist",
+          "description": "Complete a quiz with 100% correct answers."
+        },
+        "MAESTRO_HIRAGANA": {
+          "name": "Hiragana Master",
+          "description": "Bring every hiragana to the maximum SRS score."
+        },
+        "MAESTRO_KATAKANA": {
+          "name": "Katakana Master",
+          "description": "Bring every katakana to the maximum SRS score."
+        },
+        "PRIMI_TRATTI": {
+          "name": "First strokes",
+          "description": "Validate 10 strokes on the writing canvas."
+        },
+        "SCRITTORE_INSTANCABILE": {
+          "name": "Tireless writer",
+          "description": "Validate 50 strokes on the writing canvas."
+        },
+        "ESPLORATORE": {
+          "name": "Explorer",
+          "description": "Unlock 5 kana rows by bringing them to the maximum score."
+        }
+      }
     }
   },
   "admin": {

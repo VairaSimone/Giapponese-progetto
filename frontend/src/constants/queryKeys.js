@@ -23,6 +23,7 @@ export const queryKeys = Object.freeze({
   },
   quiz: {
     dashboard: ['quiz', 'dashboard'],
+    badge: ['quiz', 'badge'],
     strokeOrder: (alfabeto) => ['quiz', 'strokeOrder', alfabeto],
   },
 });

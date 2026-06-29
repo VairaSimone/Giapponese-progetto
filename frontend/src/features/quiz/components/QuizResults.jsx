@@ -26,6 +26,7 @@ const QuizResults = ({ risultatoRound, statistiche, onPlayAgain, onBackToDashboa
     xpRisposte = 0,
     bonusCombo = 0,
     bonusPercentuale = 0,
+    xpRighe = 0,
     livelloPrima = 1,
     livelloDopo = 1,
     salitoDiLivello = false,
@@ -65,6 +66,12 @@ const QuizResults = ({ risultatoRound, statistiche, onPlayAgain, onBackToDashboa
           <div className={styles.breakdownRow}>
             <span>{t('quiz.results.xpAccuracy')}</span>
             <span className={styles.breakdownValue}>+{bonusPercentuale}</span>
+          </div>
+        )}
+        {xpRighe > 0 && (
+          <div className={styles.breakdownRow}>
+            <span>{t('quiz.results.xpRows')}</span>
+            <span className={styles.breakdownValue}>+{xpRighe}</span>
           </div>
         )}
         <div className={[styles.breakdownRow, styles.breakdownTotal].join(' ')}>

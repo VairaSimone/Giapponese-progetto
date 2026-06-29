@@ -12,6 +12,7 @@ import QuizSetup from '../features/quiz/components/QuizSetup';
 import QuizPlay from '../features/quiz/components/QuizPlay';
 import QuizResults from '../features/quiz/components/QuizResults';
 import WritingPracticePanel from '../features/quiz/components/WritingPracticePanel';
+import { mostraBadgeSbloccati } from '../features/quiz/badgeToasts';
 import styles from './QuizPage.module.css';
 
 /**
@@ -64,6 +65,8 @@ const QuizPage = () => {
         onSuccess: (data) => {
           setEsito(data.data); // { risultatoRound, statistiche }
           setFase(FASI.RESULTS);
+          // Toast per i badge eventualmente sbloccati nel round.
+          mostraBadgeSbloccati(t, data.data?.risultatoRound?.nuoviBadge);
         },
         onError: (err) => {
           toast.error(getApiErrorMessage(t, err));

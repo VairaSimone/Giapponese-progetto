@@ -181,7 +181,9 @@
     "deleteConfirmText": "Sei sicuro? Questa operazione non può essere annullata.",
     "deleteConfirm": "Sì, elimina definitivamente",
     "deleteCta": "Elimina il mio account",
-    "deleteSuccess": "Il tuo account è stato eliminato."
+    "deleteSuccess": "Il tuo account è stato eliminato.",
+    "badgesTitle": "Obiettivi e badge",
+    "badgesDescription": "I traguardi che hai raggiunto studiando, scrivendo e mantenendo viva la tua streak."
   },
   "users": {
     "managementTitle": "Gestione utenti",
@@ -360,7 +362,8 @@
       "correct": "Corrette",
       "wrong": "Errate",
       "playAgain": "Gioca ancora",
-      "backToDashboard": "Torna al riepilogo"
+      "backToDashboard": "Torna al riepilogo",
+      "xpRows": "XP da righe sbloccate"
     },
     "practiceWriting": "Pratica di scrittura",
     "audio": {
@@ -386,7 +389,8 @@
       "retryStroke": "Tratto non riconosciuto: riprova seguendo la guida.",
       "strokeProgress": "Tratto {{current}} di {{total}}",
       "undo": "Annulla",
-      "clear": "Cancella"
+      "clear": "Cancella",
+      "xpEarned": "+{{xp}} XP guadagnati"
     },
     "practice": {
       "back": "Torna al quiz",
@@ -394,6 +398,88 @@
       "next": "Successivo",
       "counter": "{{current}} di {{total}}",
       "pickerTitle": "Scegli un carattere"
+    },
+    "gamification": {
+      "title": "I tuoi progressi",
+      "streakDays_one": "{{count}} giorno di fila",
+      "streakDays_other": "{{count}} giorni di fila",
+      "streakHint": "Continua così: torna domani per non spegnere la fiamma.",
+      "streakHintEmpty": "Completa un quiz oggi per accendere la tua streak.",
+      "badgeSummary": "{{unlocked}} / {{total}} badge sbloccati",
+      "goToQuiz": "Vai al quiz",
+      "viewBadges": "Vedi i badge"
+    },
+    "badges": {
+      "summary": "{{unlocked}} / {{total}} sbloccati",
+      "unlockedToast": "Badge sbloccato: {{name}}!",
+      "unlocked": "Sbloccato",
+      "unlockedOn": "Sbloccato il {{date}}",
+      "locked": "Da sbloccare",
+      "masteryHiragana": "Hiragana padroneggiati",
+      "masteryKatakana": "Katakana padroneggiati",
+      "rowsUnlocked": "Righe sbloccate",
+      "categories": {
+        "streak": "Costanza",
+        "livello": "Livello",
+        "quiz": "Quiz",
+        "maestria": "Maestria",
+        "scrittura": "Scrittura",
+        "sblocco": "Esplorazione"
+      },
+      "items": {
+        "STREAK_3": {
+          "name": "Prime scintille",
+          "description": "Studia per 3 giorni di fila."
+        },
+        "STREAK_7": {
+          "name": "Settimana di fuoco",
+          "description": "Mantieni una streak di 7 giorni."
+        },
+        "STREAK_30": {
+          "name": "Fiamma inarrestabile",
+          "description": "Mantieni una streak di 30 giorni."
+        },
+        "LIVELLO_5": {
+          "name": "Apprendista",
+          "description": "Raggiungi il livello 5."
+        },
+        "LIVELLO_10": {
+          "name": "Veterano",
+          "description": "Raggiungi il livello 10."
+        },
+        "PRIMO_QUIZ": {
+          "name": "Primo passo",
+          "description": "Completa il tuo primo quiz."
+        },
+        "QUIZ_50": {
+          "name": "Maratoneta del ripasso",
+          "description": "Completa 50 quiz."
+        },
+        "PERFEZIONISTA": {
+          "name": "Perfezionista",
+          "description": "Completa un quiz con il 100% di risposte corrette."
+        },
+        "MAESTRO_HIRAGANA": {
+          "name": "Maestro dell'Hiragana",
+          "description": "Porta tutti gli hiragana al punteggio SRS massimo."
+        },
+        "MAESTRO_KATAKANA": {
+          "name": "Maestro del Katakana",
+          "description": "Porta tutti i katakana al punteggio SRS massimo."
+        },
+        "PRIMI_TRATTI": {
+          "name": "Primi tratti",
+          "description": "Valida 10 tratti sul canvas di scrittura."
+        },
+        "SCRITTORE_INSTANCABILE": {
+          "name": "Scrittore instancabile",
+          "description": "Valida 50 tratti sul canvas di scrittura."
+        },
+        "ESPLORATORE": {
+          "name": "Esploratore",
+          "description": "Sblocca 5 righe di kana portandole al punteggio massimo."
+        }
+      }
     }
   }
 }

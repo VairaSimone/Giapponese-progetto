@@ -16,7 +16,9 @@ export const useGenerateQuiz = () => {
 /**
  * Invia l'esito della partita (POST /quiz/submit).
  * Al successo invalida la dashboard del quiz (XP, streak, record, mastered e
- * kana da rivedere cambiano) così la home si aggiorna al rientro.
+ * kana da rivedere cambiano) e il profilo badge (nuovi badge / progressi di
+ * maestria possono essersi sbloccati nel round) così la home e il profilo si
+ * aggiornano al rientro.
  */
 export const useSubmitQuizResults = () => {
   const queryClient = useQueryClient();
@@ -25,6 +27,24 @@ export const useSubmitQuizResults = () => {
     mutationFn: quizService.submitQuizResults,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quiz.dashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.quiz.badge });
+    },
+  });
+};
+
+/**
+ * Registra i tratti validati sul canvas di scrittura (POST /quiz/scrittura).
+ * È una mutation perché muta lo stato lato server (XP scrittura, contatori,
+ * badge). Al successo invalida dashboard e profilo badge.
+ */
+export const useRegistraScrittura = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: quizService.registraScrittura,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.quiz.dashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.quiz.badge });
     },
   });
 };

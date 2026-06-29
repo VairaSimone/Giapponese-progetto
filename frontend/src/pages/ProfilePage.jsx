@@ -5,6 +5,7 @@ import Badge from '../components/ui/Badge';
 import LanguageSection from '../features/auth/components/LanguageSection';
 import ChangeEmailSection from '../features/auth/components/ChangeEmailSection';
 import DeleteAccountSection from '../features/auth/components/DeleteAccountSection';
+import BadgeSection from '../features/quiz/components/BadgeSection';
 import styles from './ProfilePage.module.css';
 
 const ProfilePage = () => {
@@ -65,6 +66,8 @@ const ProfilePage = () => {
           </div>
         </dl>
       </Card>
+
+      <BadgeSection />
 
       <LanguageSection />
       <ChangeEmailSection />

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Spinner from '../../../components/ui/Spinner';
@@ -7,7 +8,9 @@ import ErrorState from '../../../components/shared/ErrorState';
 import PronunciationButton from '../../../components/ui/PronunciationButton';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { useStrokeOrder } from '../../../hooks/useStrokeOrder';
+import { useRegistraScrittura } from '../../../hooks/useQuizMutations';
 import { ALFABETI_QUIZ } from '../../../constants/quizDomain';
+import { mostraBadgeSbloccati } from '../badgeToasts';
 import StrokeOrderViewer from './StrokeOrderViewer';
 import WritingCanvas from './WritingCanvas';
 import styles from './WritingPracticePanel.module.css';
@@ -34,6 +37,8 @@ const WritingPracticePanel = ({ onBack }) => {
 
   const { data, isLoading, isError, error, refetch } = useStrokeOrder(alfabeto);
 
+  const registraScritturaMutation = useRegistraScrittura();
+
   const caratteri = useMemo(() => data?.caratteri || [], [data]);
   const corrente = caratteri[indice] || null;
 
@@ -41,6 +46,43 @@ const WritingPracticePanel = ({ onBack }) => {
   useEffect(() => {
     setIndice(0);
   }, [alfabeto]);
+
+  /**
+   * Completamento di un componente sul canvas: registra i tratti validati
+   * (POST /quiz/scrittura) e notifica XP guadagnati ed eventuali badge.
+   * Il tetto di tratti (1..50) è garantito a monte: un componente kana ne ha
+   * sempre molti meno. Gli errori sono mostrati come toast non bloccante: la
+   * pratica resta comunque utilizzabile anche offline o se la chiamata fallisce.
+   */
+  const handleScritturaCompletata = (nTratti) => {
+    if (!Number.isInteger(nTratti) || nTratti < 1) return;
+
+    registraScritturaMutation.mutate(
+      { trattiValidati: nTratti },
+      {
+        onSuccess: (risposta) => {
+          const risultato = risposta?.data?.risultato;
+          const xp = risultato?.xpGuadagnati ?? 0;
+          if (xp > 0) {
+            toast.success(t('quiz.writing.xpEarned', { xp }), { icon: '🖌️' });
+          }
+          if (risultato?.salitoDiLivello) {
+            toast.success(
+              t('quiz.results.levelUp', {
+                from: risultato.livelloPrima,
+                to: risultato.livelloDopo,
+              }),
+              { icon: '⭐' }
+            );
+          }
+          mostraBadgeSbloccati(t, risultato?.nuoviBadge);
+        },
+        onError: (err) => {
+          toast.error(getApiErrorMessage(t, err));
+        },
+      }
+    );
+  };
 
   const vaiA = (i) => {
     if (caratteri.length === 0) return;
@@ -113,6 +155,7 @@ const WritingPracticePanel = ({ onBack }) => {
                     key={`${alfabeto}-${corrente.kana}-${i}`}
                     componente={comp}
                     viewBox={data.viewBox}
+                    onCompletato={handleScritturaCompletata}
                   />
                 ))}
               </div>

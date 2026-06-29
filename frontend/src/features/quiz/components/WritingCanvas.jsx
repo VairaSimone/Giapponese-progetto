@@ -101,6 +101,11 @@ const WritingCanvas = ({ componente, viewBox = '0 0 109 109', onCompletato }) =>
   const indiceTrattoRef = useRef(0);
   indiceTrattoRef.current = indiceTratto;
 
+  // Garantisce che il completamento sia notificato al genitore UNA sola volta
+  // per montaggio (cambio carattere/componente ⇒ `key` ⇒ nuovo montaggio ⇒
+  // si può guadagnare di nuovo). Evita doppi conteggi su clear+ridisegno.
+  const giaNotificatoRef = useRef(false);
+
   // Campiona un tratto atteso (path `d`) in `n` punti, coordinate VIEW.
   const campionaAtteso = useCallback((d, n) => {
     const path = pathNascostoRef.current;
@@ -294,7 +299,12 @@ const WritingCanvas = ({ componente, viewBox = '0 0 109 109', onCompletato }) =>
       if (nuovoIndice >= strokes.length) {
         setIndiceTratto(nuovoIndice);
         setCompletato(true);
-        onCompletato?.();
+        // Notifica il completamento con il numero di tratti validati del
+        // componente, una sola volta per montaggio.
+        if (!giaNotificatoRef.current) {
+          giaNotificatoRef.current = true;
+          onCompletato?.(strokes.length);
+        }
       } else {
         setIndiceTratto(nuovoIndice);
       }

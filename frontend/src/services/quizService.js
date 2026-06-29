@@ -55,6 +55,32 @@ export const submitQuizResults = async ({ risposte, datiBonus }) => {
 };
 
 /**
+ * GET /quiz/badge (sola lettura)
+ * Catalogo completo dei badge con lo stato di sblocco dell'utente, le
+ * statistiche di gioco e i totali utili alle barre di progresso del profilo.
+ *
+ * Shape restituito (campo `data`):
+ *   { statistiche, badge[], riepilogo:{sbloccati,totale}, progresso }
+ */
+export const getQuizBadge = async () => {
+  const { data } = await apiClient.get('/quiz/badge');
+  return data;
+};
+
+/**
+ * POST /quiz/scrittura (mutativa: protetta da CSRF + rate limiter lato server)
+ * Registra i tratti validati lato client sul canvas di scrittura: il backend
+ * assegna gli XP (2 per tratto), aggiorna i contatori e valuta i badge.
+ *
+ * @param {Object} payload
+ * @param {number} payload.trattiValidati  intero 1..50 (tetto del backend)
+ */
+export const registraScrittura = async ({ trattiValidati }) => {
+  const { data } = await apiClient.post('/quiz/scrittura', { trattiValidati });
+  return data;
+};
+
+/**
  * GET /quiz/stroke/:alfabeto (sola lettura: nessuna mutazione ⇒ niente CSRF)
  * Restituisce l'ordine dei tratti di tutti i kana dell'alfabeto (dati statici
  * KanjiVG). Usato dalla visualizzazione animata e dagli esercizi di scrittura.

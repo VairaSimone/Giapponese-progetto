@@ -11,6 +11,7 @@ import { ROLES } from '../constants/domain';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import GamificationSummary from '../features/quiz/components/GamificationSummary';
 import styles from './DashboardPage.module.css';
 
 const DashboardPage = () => {
@@ -68,6 +69,9 @@ const DashboardPage = () => {
             <Button size="sm">{t('dashboard.quizCardCta')}</Button>
           </Link>
         </Card>
+
+        {/* PROGRESSI / GAMIFICATION */}
+        <GamificationSummary />
 
         {/* GESTIONE DOCENTE / CAN MANAGE */}
         {(canManage || isTeacher) && (
