@@ -83,9 +83,13 @@ exports.ordineTratti = catchAsync(async (req, res) => {
 // lato client), assegna gli XP relativi e valuta i badge. Muta lo stato.
 // ─────────────────────────────────────────────
 exports.registraScrittura = catchAsync(async (req, res) => {
-  const { trattiValidati } = req.body;
+  const { trattiValidati, caratteriErrati } = req.body;
 
-  const esito = await gamificationService.registraScrittura(req.user.id, trattiValidati);
+  const esito = await gamificationService.registraScrittura(
+    req.user.id,
+    trattiValidati,
+    caratteriErrati || []
+  );
 
   res.status(200).json({
     status: 'success',

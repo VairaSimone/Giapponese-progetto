@@ -272,6 +272,19 @@ Utente.init(
       },
     },
 
+    // Streak record: massima striscia di giorni consecutivi mai raggiunta.
+    // Monotòna crescente, usata dalla sezione streak per mostrare il primato
+    // anche dopo che la streak corrente si è azzerata.
+    streak_record: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'streak_record',
+      validate: {
+        min: { args: [0], msg: 'La streak record non può essere negativa' },
+      },
+    },
+
     // Ultima data di studio (solo data, niente orario): usata per calcolare
     // la continuità della streak. Normalizzata in UTC dal quizService.
     ultima_data_studio: {

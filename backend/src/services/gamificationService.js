@@ -1,11 +1,14 @@
 'use strict';
 
+const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const Utente = require('../models/Utente');
 const ProgressoKana = require('../models/ProgressoKana');
 const BadgeUtente = require('../models/BadgeUtente');
+const AttivitaGiornaliera = require('../models/AttivitaGiornaliera');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const { trovaKana } = require('../constants/kanaData');
 const { calcolaLivello, serializzaStatistiche } = require('../utils/gameStats');
 const {
   BADGES,
@@ -35,6 +38,79 @@ const PUNTEGGIO_SRS_MAX = ProgressoKana.PUNTEGGIO_MAX; // 5
 // Tetto difensivo ai tratti dichiarati in una singola chiamata: coerente col
 // limite del validator, protegge da payload gonfiati (anti-manipolazione).
 const MAX_TRATTI_PER_CHIAMATA = 50;
+
+// Tetto al numero di caratteri con ordine-tratti errato segnalabili in una
+// singola sessione di scrittura (allineato al validator).
+const MAX_CARATTERI_ERRATI = 50;
+
+/**
+ * Normalizza l'elenco dei caratteri il cui ORDINE DEI TRATTI è stato sbagliato
+ * nella sessione di scrittura. Ogni voce è validata contro il dizionario
+ * canonico (anti-manipolazione del client) e aggregata per occorrenze.
+ *
+ * @param {Array<{kana:string, tipo:string}>} caratteriErrati
+ * @returns {Map<string, {kana:string, tipo:string, conteggio:number}>}
+ *          chiave `${tipo}:${kana}` → numero di errori di tratto
+ */
+const aggregaCaratteriErrati = (caratteriErrati) => {
+  const mappa = new Map();
+  if (!Array.isArray(caratteriErrati)) return mappa;
+
+  for (const voce of caratteriErrati.slice(0, MAX_CARATTERI_ERRATI)) {
+    const tipo = voce && voce.tipo;
+    const kana = voce && typeof voce.kana === 'string' ? voce.kana.trim() : '';
+    if (!trovaKana(kana, tipo)) continue; // glifo sconosciuto ⇒ ignorato
+
+    const chiave = `${tipo}:${kana}`;
+    if (mappa.has(chiave)) {
+      mappa.get(chiave).conteggio += 1;
+    } else {
+      mappa.set(chiave, { kana, tipo, conteggio: 1 });
+    }
+  }
+  return mappa;
+};
+
+/**
+ * Accumula gli errori di ordine-tratti sui ProgressoKana coinvolti, dentro una
+ * transazione esistente. Upsert massivo: incrementa `errori_tratti` sulle
+ * righe già presenti (lette/lockate) e crea quelle mancanti.
+ *
+ * @param {string} userId
+ * @param {Map<string, {kana:string, tipo:string, conteggio:number}>} mappaErrati
+ * @param {import('sequelize').Transaction} t
+ */
+const registraErroriTratti = async (userId, mappaErrati, t) => {
+  if (mappaErrati.size === 0) return;
+
+  const kanaCoinvolti = Array.from(mappaErrati.values()).map((v) => v.kana);
+  const esistenti = await ProgressoKana.findAll({
+    where: { utente_id: userId, kana: { [Op.in]: kanaCoinvolti } },
+    transaction: t,
+    lock: t.LOCK.UPDATE,
+  });
+  const erroriEsistenti = new Map(
+    esistenti.map((p) => [`${p.tipo}:${p.kana}`, p.errori_tratti])
+  );
+
+  const righe = Array.from(mappaErrati.values()).map((v) => {
+    const chiave = `${v.tipo}:${v.kana}`;
+    const attuale = erroriEsistenti.get(chiave) || 0;
+    return {
+      utente_id: userId,
+      kana: v.kana,
+      tipo: v.tipo,
+      errori_tratti: attuale + v.conteggio,
+    };
+  });
+
+  // `punteggio`/`tentativi`/`errori` NON sono in updateOnDuplicate ⇒ preservati
+  // sulle righe esistenti; sulle nuove righe restano ai default del modello.
+  await ProgressoKana.bulkCreate(righe, {
+    updateOnDuplicate: ['errori_tratti', 'updated_at'],
+    transaction: t,
+  });
+};
 
 // ─────────────────────────────────────────────
 // Conteggio righe base completamente padroneggiate
@@ -143,13 +219,17 @@ const valutaProgressi = async (utente, t) => {
  *
  * @param {string} userId
  * @param {number} trattiValidati  intero 1..MAX_TRATTI_PER_CHIAMATA
+ * @param {Array<{kana:string, tipo:string}>} [caratteriErrati]  caratteri il
+ *        cui ordine dei tratti è stato sbagliato nella sessione (per la
+ *        sezione "caratteri problematici" / allenamento intensivo).
  */
-const registraScrittura = async (userId, trattiValidati) => {
+const registraScrittura = async (userId, trattiValidati, caratteriErrati = []) => {
   const tratti = Number(trattiValidati);
   if (!Number.isInteger(tratti) || tratti < 1 || tratti > MAX_TRATTI_PER_CHIAMATA) {
     throw new AppError('Numero di tratti validati non valido.', 422, 'INVALID_STROKE_COUNT');
   }
 
+  const mappaErrati = aggregaCaratteriErrati(caratteriErrati);
   const xpScrittura = tratti * XP_PER_TRATTO;
 
   const { utenteAggiornato, xpIniziale, valutazione } = await sequelize.transaction(async (t) => {
@@ -163,7 +243,20 @@ const registraScrittura = async (userId, trattiValidati) => {
     utente.xp = iniziale + xpScrittura;
     utente.tratti_validati = (utente.tratti_validati || 0) + tratti;
 
+    // Registra gli errori di ordine-tratti per carattere (se presenti).
+    await registraErroriTratti(userId, mappaErrati, t);
+
     const esitoValutazione = await valutaProgressi(utente, t);
+
+    // Heatmap: accumula i tratti del giorno e gli XP guadagnati.
+    await AttivitaGiornaliera.registra(
+      userId,
+      {
+        trattiValidati: tratti,
+        xpGuadagnati: xpScrittura + (esitoValutazione.xpRighe || 0),
+      },
+      t
+    );
 
     await utente.save({ transaction: t });
     return { utenteAggiornato: utente, xpIniziale: iniziale, valutazione: esitoValutazione };
@@ -217,7 +310,7 @@ const getRiepilogoBadge = async (userId, t = null) => {
 const getProfiloBadge = async (userId) => {
   const utente = await Utente.findByPk(userId, {
     attributes: [
-      'id', 'xp', 'streak', 'punteggio_record', 'ultima_data_studio',
+      'id', 'xp', 'streak', 'streak_record', 'punteggio_record', 'ultima_data_studio',
       'quiz_completati', 'tratti_validati', 'righe_sbloccate',
     ],
   });

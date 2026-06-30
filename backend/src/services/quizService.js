@@ -4,10 +4,12 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const Utente = require('../models/Utente');
 const ProgressoKana = require('../models/ProgressoKana');
+const AttivitaGiornaliera = require('../models/AttivitaGiornaliera');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { filtraKana, trovaKana, ALFABETI } = require('../constants/kanaData');
 const { calcolaLivello, infoLivello, serializzaStatistiche } = require('../utils/gameStats');
+const { mezzanotteOdiernaUTC, formattaDataOnly, differenzaGiorni } = require('../utils/dateUtils');
 const gamificationService = require('./gamificationService');
 
 /**
@@ -57,27 +59,11 @@ const LIMITE_PEGGIORI_KANA = 12;
 // ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
-// Helpers — date (normalizzate in UTC, colonna DATEONLY 'YYYY-MM-DD')
+// Helpers — date
+// `mezzanotteOdiernaUTC`, `formattaDataOnly` e `differenzaGiorni` vivono ora
+// in `utils/dateUtils` per essere condivisi con `statisticheService` e con il
+// modello `AttivitaGiornaliera` senza derive di logica.
 // ─────────────────────────────────────────────
-
-/** Mezzanotte UTC odierna come oggetto Date. */
-const mezzanotteOdiernaUTC = () => {
-  const ora = new Date();
-  return new Date(Date.UTC(ora.getUTCFullYear(), ora.getUTCMonth(), ora.getUTCDate()));
-};
-
-/** Formatta una Date in stringa 'YYYY-MM-DD'. */
-const formattaDataOnly = (d) => d.toISOString().slice(0, 10);
-
-/**
- * Differenza in giorni tra una data memorizzata ('YYYY-MM-DD') e una Date di
- * riferimento (mezzanotte UTC). Positiva se la data memorizzata è nel passato.
- */
-const differenzaGiorni = (dataStr, riferimento) => {
-  const [anno, mese, giorno] = String(dataStr).split('-').map(Number);
-  const memorizzata = new Date(Date.UTC(anno, mese - 1, giorno));
-  return Math.round((riferimento.getTime() - memorizzata.getTime()) / 86400000);
-};
 
 // ─────────────────────────────────────────────
 // Helper — mescolamento (Fisher-Yates, non distorto)
@@ -252,7 +238,7 @@ const submitQuizResults = async (userId, risposte, datiBonus = {}) => {
       throw new AppError('Utente non trovato.', 404, 'USER_NOT_FOUND');
     }
 
-    // 3a. Punteggi SRS attuali dei kana coinvolti (lock per coerenza).
+    // 3a. Punteggi/contatori SRS attuali dei kana coinvolti (lock per coerenza).
     const kanaCoinvolti = normalizzate.map((r) => r.kana);
     const progressiEsistenti = await ProgressoKana.findAll({
       where: { utente_id: userId, kana: { [Op.in]: kanaCoinvolti } },
@@ -260,23 +246,37 @@ const submitQuizResults = async (userId, risposte, datiBonus = {}) => {
       lock: t.LOCK.UPDATE,
     });
     const mappaEsistenti = new Map(
-      progressiEsistenti.map((p) => [`${p.tipo}:${p.kana}`, p.punteggio])
+      progressiEsistenti.map((p) => [
+        `${p.tipo}:${p.kana}`,
+        { punteggio: p.punteggio, tentativi: p.tentativi, errori: p.errori },
+      ])
     );
 
-    // 3b. Calcolo dei nuovi punteggi e upsert massivo (una sola query).
+    // 3b. Calcolo dei nuovi punteggi/contatori e upsert massivo (una query).
+    //     `errori_tratti` NON è toccato qui (lo aggiorna la scrittura su canvas)
+    //     e resta volutamente fuori da `updateOnDuplicate` per preservarlo.
     const righeUpsert = normalizzate.map((r) => {
       const chiave = `${r.tipo}:${r.kana}`;
-      const attuale = mappaEsistenti.has(chiave)
-        ? mappaEsistenti.get(chiave)
-        : PUNTEGGIO_SRS_DEFAULT;
-      const nuovo = r.corretto
-        ? Math.min(PUNTEGGIO_SRS_MAX, attuale + SRS_DELTA_CORRETTA)
-        : Math.max(PUNTEGGIO_SRS_MIN, attuale - SRS_DELTA_ERRATA);
-      return { utente_id: userId, kana: r.kana, tipo: r.tipo, punteggio: nuovo };
+      const attuale = mappaEsistenti.get(chiave) || {
+        punteggio: PUNTEGGIO_SRS_DEFAULT,
+        tentativi: 0,
+        errori: 0,
+      };
+      const nuovoPunteggio = r.corretto
+        ? Math.min(PUNTEGGIO_SRS_MAX, attuale.punteggio + SRS_DELTA_CORRETTA)
+        : Math.max(PUNTEGGIO_SRS_MIN, attuale.punteggio - SRS_DELTA_ERRATA);
+      return {
+        utente_id: userId,
+        kana: r.kana,
+        tipo: r.tipo,
+        punteggio: nuovoPunteggio,
+        tentativi: attuale.tentativi + 1,
+        errori: attuale.errori + (r.corretto ? 0 : 1),
+      };
     });
 
     await ProgressoKana.bulkCreate(righeUpsert, {
-      updateOnDuplicate: ['punteggio', 'updated_at'],
+      updateOnDuplicate: ['punteggio', 'tentativi', 'errori', 'updated_at'],
       transaction: t,
     });
 
@@ -288,6 +288,10 @@ const submitQuizResults = async (userId, risposte, datiBonus = {}) => {
     const oggi = mezzanotteOdiernaUTC();
     utente.streak = calcolaNuovaStreak(utente.streak, utente.ultima_data_studio, oggi);
     utente.ultima_data_studio = formattaDataOnly(oggi);
+    // Aggiorna il primato della streak (monotòno crescente).
+    if (utente.streak > (utente.streak_record || 0)) {
+      utente.streak_record = utente.streak;
+    }
 
     // 3e. Record (highscore).
     if (percentuale > (utente.punteggio_record || 0)) {
@@ -301,6 +305,20 @@ const submitQuizResults = async (userId, risposte, datiBonus = {}) => {
     //     transazione. Può aggiungere altri XP (sblocco riga) sull'utente
     //     prima del salvataggio.
     const valutazione = await gamificationService.valutaProgressi(utente, t);
+
+    // 3h. Heatmap: accumula l'attività del giorno (quiz + risposte + XP totali
+    //     del round, inclusi gli XP una-tantum di sblocco riga). Stessa
+    //     transazione ⇒ coerente con XP/streak/SRS.
+    await AttivitaGiornaliera.registra(
+      userId,
+      {
+        quizCompletati: 1,
+        risposteTotali: totale,
+        risposteCorrette: corrette,
+        xpGuadagnati: xpGuadagnati + (valutazione.xpRighe || 0),
+      },
+      t
+    );
 
     await utente.save({ transaction: t });
     return { utente, xpIniziale, valutazione };
@@ -347,7 +365,7 @@ const submitQuizResults = async (userId, risposte, datiBonus = {}) => {
 const getDashboard = async (userId) => {
   const utente = await Utente.findByPk(userId, {
     attributes: [
-      'id', 'xp', 'streak', 'punteggio_record', 'ultima_data_studio',
+      'id', 'xp', 'streak', 'streak_record', 'punteggio_record', 'ultima_data_studio',
       'quiz_completati', 'tratti_validati', 'righe_sbloccate',
     ],
   });

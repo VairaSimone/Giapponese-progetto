@@ -12,6 +12,7 @@ require('../models/Utente');
 require('../models/Invito');
 require('../models/ProgressoKana');
 require('../models/BadgeUtente');
+require('../models/AttivitaGiornaliera');
 
 /**
  * Runner delle migrazioni versionate basato su Umzug.

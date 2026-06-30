@@ -34,6 +34,11 @@ class ProgressoKana extends Model {
       kana: this.kana,
       tipo: this.tipo,
       punteggio: this.punteggio,
+      tentativi: this.tentativi,
+      errori: this.errori,
+      erroriTratti: this.errori_tratti,
+      // Tasso di errore nelle risposte (0..1); 0 se non ancora tentato.
+      tassoErrore: this.tentativi > 0 ? this.errori / this.tentativi : 0,
     };
   }
 }
@@ -83,6 +88,47 @@ ProgressoKana.init(
         isInt: { msg: 'Il punteggio deve essere un numero intero' },
       },
     },
+
+    // ─────────────────────────────────────────────
+    // Statistiche di errore (Caratteri problematici / Allenamento Intensivo)
+    // Contatori MONOTÒNI a vita per carattere: alimentano la sezione dei
+    // "caratteri problematici" e la selezione della modalità intensiva.
+    // ─────────────────────────────────────────────
+
+    // Numero totale di volte in cui il carattere è stato proposto in un quiz.
+    tentativi: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: { args: [0], msg: 'I tentativi non possono essere negativi' },
+        isInt: { msg: 'I tentativi devono essere un numero intero' },
+      },
+    },
+
+    // Numero di risposte ERRATE al carattere nei quiz (≤ tentativi).
+    errori: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: { args: [0], msg: 'Gli errori non possono essere negativi' },
+        isInt: { msg: 'Gli errori devono essere un numero intero' },
+      },
+    },
+
+    // Numero di volte in cui l'ORDINE DEI TRATTI è stato sbagliato durante gli
+    // esercizi di scrittura su canvas. Indipendente dagli errori di quiz.
+    errori_tratti: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'errori_tratti',
+      validate: {
+        min: { args: [0], msg: 'Gli errori di tratto non possono essere negativi' },
+        isInt: { msg: 'Gli errori di tratto devono essere un numero intero' },
+      },
+    },
   },
   {
     sequelize,
@@ -101,6 +147,9 @@ ProgressoKana.init(
       { fields: ['utente_id'], name: 'progressi_kana_utente_id' },
       // Indice composito per le query della dashboard (mastered / peggiori).
       { fields: ['utente_id', 'punteggio'], name: 'progressi_kana_utente_punteggio' },
+      // Indice per la sezione "caratteri problematici": filtra rapidamente i
+      // caratteri con errori dell'utente prima dell'ordinamento applicativo.
+      { fields: ['utente_id', 'errori'], name: 'progressi_kana_utente_errori' },
     ],
   }
 );

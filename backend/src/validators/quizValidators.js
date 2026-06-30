@@ -81,6 +81,7 @@ const validateStrokeOrder = [
 // allineato al limite difensivo del gamificationService.
 // ─────────────────────────────────────────────
 const MAX_TRATTI_SCRITTURA = 50;
+const MAX_CARATTERI_ERRATI = 50;
 
 const validateRegistraScrittura = [
   body('trattiValidati')
@@ -89,6 +90,24 @@ const validateRegistraScrittura = [
     .isInt({ min: 1, max: MAX_TRATTI_SCRITTURA })
     .withMessage(`I tratti validati devono essere un intero tra 1 e ${MAX_TRATTI_SCRITTURA}`)
     .toInt(),
+
+  // Caratteri con ordine dei tratti sbagliato nella sessione (facoltativo).
+  body('caratteriErrati')
+    .optional()
+    .isArray({ max: MAX_CARATTERI_ERRATI })
+    .withMessage(`caratteriErrati deve essere un array (max ${MAX_CARATTERI_ERRATI})`),
+
+  body('caratteriErrati.*.kana')
+    .if(body('caratteriErrati').exists())
+    .isString().withMessage('Il kana deve essere una stringa')
+    .bail()
+    .trim()
+    .notEmpty().withMessage('Il kana non può essere vuoto')
+    .isLength({ max: 8 }).withMessage('Kana non valido'),
+
+  body('caratteriErrati.*.tipo')
+    .if(body('caratteriErrati').exists())
+    .isIn(ALFABETI).withMessage(`Il tipo deve essere uno di: ${ALFABETI.join(', ')}`),
 ];
 
 module.exports = {

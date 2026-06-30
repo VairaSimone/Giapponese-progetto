@@ -51,6 +51,7 @@ const serializzaStatistiche = (utente) => {
   return {
     xp,
     streak: utente.streak || 0,
+    streakRecord: utente.streak_record || 0,
     punteggioRecord: utente.punteggio_record || 0,
     ultimaDataStudio: utente.ultima_data_studio || null,
     quizCompletati: utente.quiz_completati || 0,
